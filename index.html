@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Secondary Sales Insights</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 'Segoe UI',system-ui,sans-serif;background:#f3f5f9;color:#1a2238}
+button,select,input{font:inherit}
+header{display:flex;align-items:center;gap:12px;background:#0e1a3a;color:#fff;padding:8px 18px;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+header span{color:#c8a24a;font-weight:600;letter-spacing:.04em;font-size:12px;line-height:1.1}
+nav{display:flex;gap:8px;margin-left:12px;flex:1;flex-wrap:wrap}
+nav button{background:#17264f;color:#e9d9a6;border:1px solid #2a3b73;border-radius:10px;padding:7px 14px;font-weight:600;cursor:pointer}
+nav button.on{border-color:#c8a24a;color:#fff}
+.u{font-size:12px;display:flex;gap:8px;align-items:center}.u i{background:#c8a24a;color:#0e1a3a;border-radius:6px;padding:1px 7px;font-style:normal;font-weight:700}
+.u button{background:none;border:0;color:#cbd3ea;cursor:pointer}
+main{max-width:1240px;margin:0 auto;padding:20px}
+h2{margin:0 0 4px}h3{margin:0 0 12px;font-size:15px}.mu{color:#5b6580}
+.lg{min-height:100vh;display:grid;place-content:center;justify-items:center;gap:22px;padding:20px;background:radial-gradient(circle at 50% 0,#fff,#f3f5f9)}
+.card,section{background:#fff;border:1px solid #e3e7f0;border-radius:16px;padding:18px}
+.card{border-radius:20px;box-shadow:0 12px 40px #1a223814;padding:34px 36px;width:min(500px,100%);text-align:center}
+.card h1{font-size:22px;margin:14px 0 6px}.card p{color:#4b556f;margin:0 0 22px}
+.g{width:100%;display:flex;gap:12px;justify-content:center;align-items:center;padding:14px;border:1px solid #c9d2e6;border-radius:14px;background:#fff;font-weight:600;font-size:15px;cursor:pointer}
+.card a{display:inline-block;margin-top:18px;color:#1a4fd6}
+footer{text-align:center;font-size:13px;color:#4b556f}
+.err{background:#fdecec;color:#9b1c1c;border-radius:10px;padding:10px 12px;margin:12px 0;text-align:left}
+.ok{background:#e8f6ee;color:#14693a;border-radius:10px;padding:10px 12px;margin:12px 0}
+.em{background:#fff;border:1px dashed #c9d2e6;border-radius:14px;padding:40px;text-align:center;color:#5b6580}
+.bar0{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+select,input[type=text],input[type=email]{border:1px solid #c9d2e6;border-radius:8px;padding:7px 10px;background:#fff}
+.kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.k{background:#fff;border:1px solid #e3e7f0;border-left:4px solid #c8a24a;border-radius:12px;padding:12px 14px}
+.k small{display:block;color:#5b6580;font-weight:600}.k b{display:block;font-size:22px;margin:2px 0}.k em{font-style:normal;font-size:12px;color:#5b6580}
+.k.hz{background:#0e1a3a;border-color:#c8a24a}.k.hz *{color:#fff}.k.hz b{color:#e9d9a6}
+section{margin-bottom:16px}.sc{overflow-x:auto}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #edf0f6;white-space:nowrap}th{color:#5b6580;font-size:12px}
+.bar{height:6px;background:#edf0f6;border-radius:4px;margin-bottom:3px;min-width:110px}.bar i{display:block;height:100%;background:#c8a24a;border-radius:4px}
+.tr{display:flex;gap:10px;align-items:flex-end;height:150px}.tr div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;font-size:11px;color:#5b6580;min-width:34px}
+.tr i{display:block;width:100%;background:#c9d2e6;border-radius:5px 5px 0 0}.tr .on i{background:#0e1a3a}
+.btn{background:#0e1a3a;color:#fff;border:0;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer}.btn:disabled{opacity:.5}
+.sm{background:#fff;border:1px solid #c9d2e6;border-radius:8px;padding:5px 10px;cursor:pointer}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+</style></head><body><div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// 1) Paste your Supabase Project URL and the public "anon" key (never the service_role key)
+const SUPABASE_URL='https://emikqjnqnrgqzpujdwzp.supabase.co', SUPABASE_KEY='sb_publishable_1o6T2WrmhKp52DySiIjq0g_SLY-ri9Z';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=s=>document.querySelector(s),app=$('#app');
+const REG=['CENTRAL','EAST','NORTH','SOUTH','WEST'],MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let me=null,cm='',rf='',pend=null;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cr=n=>{n=+n||0;return n>=1e7?'₹'+(n/1e7).toFixed(2)+' Cr':n>=1e5?'₹'+(n/1e5).toFixed(2)+' L':'₹'+Math.round(n).toLocaleString('en-IN')};
+const mon=d=>MN[+d.slice(5,7)-1]+'-'+d.slice(2,4);
+const pm=d=>{let i=+d.slice(5,7)+2,y=+d.slice(0,4)+Math.floor(i/12);i%=12;return y+'-'+String(i+1).padStart(2,'0')+'-01'};
+const opts=(a,s)=>a.map(x=>`<option ${x==s?'selected':''}>${x}</option>`).join('');
+const ROLE={admin:'Admin',national:'National head',director:'Director',regional:'Regional head',depot:'Depot team'},FULL=['admin','national','director'];
+const ropts=s=>Object.entries(ROLE).map(([k,n])=>`<option value=${k} ${k==s?'selected':''}>${n}</option>`).join('');
+const scope=p=>FULL.includes(p.role)?'All depots':p.role=='regional'?(p.region||'No region')+' region':(p.depots||[]).join(', ')||'No depots';
+const fv=()=>{const r=$('#nr').value;$('#ng').hidden=r!='regional';$('#nd').hidden=r!='depot';$('#nul').hidden=r=='depot'};
+
+function login(msg){app.innerHTML=`<div class=lg><div class=card><img src=logo.png width=150 height=150 alt="NM Business Solutions"><h1>Secondary Sales Insights</h1><p>Depot-wise Sales, Stock &amp; Provisional Demand Analytics</p>
+<button class=g onclick="go()"><svg width=20 height=20 viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Sign in with Google</button>
+<footer><b>NM Business Solutions • Secondary Sales Insights Suite 2026</b><br>Authorized personnel only. Access is limited to approved accounts.</footer></div>`}
+const go=sw=>sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname,queryParams:sw?{prompt:'select_account'}:{}}});
+const out=()=>sb.auth.signOut().then(()=>location.reload());
+
+async function boot(){
+ const{data:{session}}=await sb.auth.getSession();
+ if(!session)return login();
+ const email=session.user.email.toLowerCase();
+ const{data:p}=await sb.from('profiles').select('*').eq('email',email).eq('active',true).maybeSingle();
+ if(!p){await sb.auth.signOut();return login('Access not authorized. Ask your admin to approve '+esc(email)+'.')}
+ me=p;const ad=p.role=='admin';
+ app.innerHTML=`<header><img src=logo.png width=40 height=40 alt=""><b>NMBS</b><span>SECONDARY SALES<br>INSIGHTS</span>
+ <nav><button id=t-dash onclick="show('dash')">Dashboard</button>${FULL.includes(p.role)?`<button id=t-lead onclick="show('lead')">Leaderboard</button>`:''}${ad||(p.can_upload&&p.role!='depot')?`<button id=t-upl onclick="show('upl')">Upload data</button>`:''}${ad?`<button id=t-admn onclick="show('admn')">Admin controls</button>`:''}</nav>
+ <div class=u>${esc(email)}<i>${esc(ROLE[p.role])}</i><button onclick="out()">Logout</button></div></header><main id=v></main>`;
+ show(p.role=='director'?'lead':'dash')}
+function show(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));({dash,lead,upl,admn})[t]()}
+
+async function dash(){
+ const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
+ const{data:b}=await sb.from('upload_batches').select('mnth');
+ const ms=[...new Set((b||[]).map(x=>x.mnth))].sort().reverse();
+ if(!ms.length)return v.innerHTML=`<div class=em>No data yet. ${me.role=='admin'?'Open Upload data to add the first monthly file.':'Your admin will upload the first monthly file.'}</div>`;
+ if(!ms.includes(cm))cm=ms[0];
+ const[a,t]=await Promise.all([sb.rpc('dash_by_depot',{m:cm}),sb.rpc('dash_trend')]);
+ if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
+ const all=a.data,rg=[...new Set(all.map(r=>r.region))].sort(),d=rf?all.filter(r=>r.region==rf):all,S=k=>d.reduce((s,r)=>s+ +r[k],0);
+ const K=[['Sales value','soldval','Sales in '+mon(cm)],['Closing stock value','stockval','Stock at end of '+mon(cm)],['Denied value','deniedval','Lost demand in '+mon(cm)],['Debit notes','otherval','Other issues in '+mon(cm)],['Provisional demand (PD)','proval','PD for '+mon(pm(cm))]];
+ const mx=Math.max(1,...d.map(r=>+r.soldval)),tr=t.data||[],tm=Math.max(1,...tr.map(r=>+r.soldval));
+ v.innerHTML=`<div class=bar0><select onchange="cm=this.value;dash()">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</select>
+ ${rg.length>1?`<select onchange="rf=this.value;dash()"><option value="">All regions</option>${opts(rg,rf)}</select>`:''}<span class=mu>${FULL.includes(me.role)?ROLE[me.role]+' view':esc(scope(me))}</span></div>
+ <div class=kp>${K.map(([n,k,s])=>`<div class=k><small>${n}</small><b>${cr(S(k))}</b><em>${s}</em></div>`).join('')}<div class="k hz"><small>PD Month</small><b>${mon(pm(cm))}</b></div></div>
+ <section><h3>Sales value by month</h3><div class=tr>${tr.map(r=>`<div class="${r.mnth==cm?'on':''}" title="${cr(r.soldval)}"><i style="height:${+r.soldval/tm*100}%"></i>${mon(r.mnth)}</div>`).join('')}</div></section>
+ <section><h3>Depots in ${mon(cm)}</h3><div class=sc><table><tr><th>Depot<th>Region<th>Sales value<th>Closing stock<th>Denied<th>Debit notes<th>PD for ${mon(pm(cm))}</tr>
+ ${d.map(r=>`<tr><td>${esc(r.depot)}<td>${r.region}<td><div class=bar><i style="width:${+r.soldval/mx*100}%"></i></div>${cr(r.soldval)}<td>${cr(r.stockval)}<td>${cr(r.deniedval)}<td>${cr(r.otherval)}<td>${cr(r.proval)}</tr>`).join('')}</table></div></section>`}
+
+let lm='soldval';
+async function lead(){
+ const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
+ const{data:b}=await sb.from('upload_batches').select('mnth'),ms=[...new Set((b||[]).map(x=>x.mnth))].sort().reverse();
+ if(!ms.length)return v.innerHTML='<div class=em>No data yet.</div>';
+ if(!ms.includes(cm))cm=ms[0];
+ const a=await sb.rpc('dash_by_depot',{m:cm});if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
+ const MET={soldval:'Sales value',proval:'Provisional demand (PD)',stockval:'Closing stock value',deniedval:'Denied value',otherval:'Debit notes'},R={};
+ a.data.forEach(r=>R[r.region]=(R[r.region]||0)+ +r[lm]);
+ const rr=Object.entries(R).sort((x,y)=>y[1]-x[1]),dd=[...a.data].sort((x,y)=>y[lm]-x[lm]),tot=dd.reduce((s,r)=>s+ +r[lm],0)||1,rm=rr[0]?rr[0][1]||1:1,dm=dd[0]?+dd[0][lm]||1:1;
+ v.innerHTML=`<div class=bar0><select onchange="cm=this.value;lead()">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</select><select onchange="lm=this.value;lead()">${Object.entries(MET).map(([k,n])=>`<option value=${k} ${k==lm?'selected':''}>${n}</option>`).join('')}</select><span class=mu>Ranked highest first, ${mon(cm)}</span></div>
+ <section><h3>Regions</h3><div class=sc><table><tr><th>Rank<th>Region<th>${MET[lm]}<th>Share</tr>${rr.map(([n,x],i)=>`<tr><td>${i+1}<td>${n}<td><div class=bar><i style="width:${x/rm*100}%"></i></div>${cr(x)}<td>${(x/tot*100).toFixed(1)}%</tr>`).join('')}</table></div></section>
+ <section><h3>Depots</h3><div class=sc><table><tr><th>Rank<th>Depot<th>Region<th>${MET[lm]}<th>Share</tr>${dd.map((r,i)=>`<tr><td>${i+1}<td>${esc(r.depot)}<td>${r.region}<td><div class=bar><i style="width:${+r[lm]/dm*100}%"></i></div>${cr(r[lm])}<td>${(+r[lm]/tot*100).toFixed(1)}%</tr>`).join('')}</table></div></section>`}
+const H='MNTH GPCD INDEX NOMENCLATURE PACK ITYPE GENCD GENNAME SUPNAME DEPOT WSRATEPERUNIT SOLDCS SOLDUN OTHISSCS OTHISSUN STOCKCS STOCKUN DENIEDCS DENIEDUN PRO_CASES PRO_UNITS'.split(' ');
+const C={gpcd:'GPCD',item_index:'INDEX',nomenclature:'NOMENCLATURE',pack:'PACK',itype:'ITYPE',gencd:'GENCD',genname:'GENNAME',supname:'SUPNAME',wsrateperunit:'WSRATEPERUNIT',soldcs:'SOLDCS',soldun:'SOLDUN',othisscs:'OTHISSCS',othissun:'OTHISSUN',stockcs:'STOCKCS',stockun:'STOCKUN',deniedcs:'DENIEDCS',deniedun:'DENIEDUN',pro_cases:'PRO_CASES',pro_units:'PRO_UNITS'},TX=['nomenclature','itype','genname','supname'];
+function upl(){$('#v').innerHTML=`<h2>Upload monthly Excel</h2><p class=mu>Use the same 21-column format as the sample file. A month that is already uploaded is blocked; an admin must delete it first. PORT BLAIR is converted to SRI VIJAYA PURAM automatically.</p><section><input type=file accept=".xlsx,.xls" onchange="rd(this.files[0])"><div id=pv></div></section>`}
+async function rd(f){
+ if(!f)return;const pv=$('#pv');pend=null;pv.innerHTML='<p class=mu>Reading file…</p>';
+ try{
+ const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true}),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:null});
+ if(!rows.length)return pv.innerHTML='<div class=err>The first sheet is empty.</div>';
+ const miss=H.filter(h=>!(h in rows[0]));if(miss.length)return pv.innerHTML=`<div class=err>Missing columns: ${esc(miss.join(', '))}</div>`;
+ const{data:md}=await sb.from('master_depot_regions').select('depot'),ok=new Set(md.map(x=>x.depot)),bad={},by={},seen=new Set();let dup=0;
+ for(const r of rows){
+  let dp=String(r.DEPOT||'').trim().toUpperCase().replace(/\s+/g,' ');if(dp=='PORT BLAIR')dp='SRI VIJAYA PURAM';
+  if(!ok.has(dp)){bad[dp||'(blank)']=(bad[dp||'(blank)']||0)+1;continue}
+  const d=r.MNTH instanceof Date?r.MNTH:new Date(r.MNTH);if(isNaN(d)){bad['Invalid month']=(bad['Invalid month']||0)+1;continue}
+  const m=new Date(d.getTime()+432e5).toISOString().slice(0,7)+'-01',key=m+r.INDEX+dp;if(seen.has(key)){dup++;continue}seen.add(key);
+  const o={mnth:m,depot:dp};for(const[k,h]of Object.entries(C))o[k]=TX.includes(k)?String(r[h]??''):(+r[h]||0);
+  (by[m]=by[m]||[]).push(o)}
+ const bk=Object.keys(bad);
+ if(bk.length||dup)return pv.innerHTML=`<div class=err><b>Upload blocked.</b><br>${bk.map(k=>`${esc(k)}: ${bad[k]} rows`).join('<br>')}${bk.length?'<br>Unknown depots must be added to the depot-region mapping first.':''}${dup?`<br>${dup} duplicate rows (same month, item and depot).`:''}</div>`;
+ const mk=Object.keys(by),ex=await sb.from('upload_batches').select('mnth,filename,uploaded_by,uploaded_at').in('mnth',mk);
+ if(ex.error)return pv.innerHTML=`<div class=err>${esc(ex.error.message)}</div>`;
+ if(ex.data.length)return pv.innerHTML=`<div class=err><b>Upload blocked: duplicate month.</b><br>${ex.data.map(x=>`${mon(x.mnth)} was already uploaded as ${esc(x.filename)} by ${esc(x.uploaded_by)} on ${new Date(x.uploaded_at).toLocaleDateString('en-IN')}.`).join('<br>')}<br>Nothing was changed. An admin can delete that month in Admin controls &gt; Upload history and then upload it again.</div>`;
+ pend={by,name:f.name};const ms=Object.keys(by).sort();
+ pv.innerHTML=`<div class=ok>File is valid: ${rows.length.toLocaleString('en-IN')} rows across ${ms.length} month(s): ${ms.map(m=>mon(m)+' ('+by[m].length.toLocaleString('en-IN')+')').join(', ')}</div><button class=btn id=ub onclick="up()">Upload these months</button><div id=st class=mu></div>`
+ }catch(e){pv.innerHTML=`<div class=err>Could not read the file: ${esc(e.message)}</div>`}}
+async function up(){
+ const st=$('#st'),f=m=>st.innerHTML=m,bad=e=>{f(`<div class=err>Upload stopped. Nothing was saved for this month: ${esc(e.message)}</div>`);$('#ub').disabled=false};$('#ub').disabled=true;
+ for(const m of Object.keys(pend.by).sort()){
+  const rs=pend.by[m];f(`Uploading ${mon(m)} (${rs.length.toLocaleString('en-IN')} rows)…`);
+  const r=await sb.rpc('upload_month',{p_mnth:m,p_filename:pend.name,p_rows:rs});if(r.error)return bad(r.error)}
+ f('<div class=ok>Upload complete. The dashboard now shows the new data.</div>');pend=null}
+
+async function admn(){
+ const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
+ const[p,b,dp]=await Promise.all([sb.from('profiles').select('*').order('email'),sb.from('upload_batches').select('*').order('mnth',{ascending:false}),sb.from('master_depot_regions').select('depot,region').order('depot')]);
+ const DP=(dp.data||[]).map(x=>x.depot),dops=s=>DP.map(x=>`<option ${(s||[]).includes(x)?'selected':''}>${x}</option>`).join('');
+ v.innerHTML=`<h2>Admin controls</h2><p class=mu>Only approved emails can sign in. Depot teams see their assigned depots (several people can share one depot), regional heads see their region, and the national head and director see everything. Only admins can edit.</p>
+ <section><h3>Team access</h3><div class=row style="margin-bottom:12px"><input type=email id=ne placeholder="Google email"><select id=nr onchange="fv()">${ropts('depot')}</select><select id=ng hidden><option value="">Choose region</option>${opts(REG)}</select><select id=nd multiple size=4 hidden title="Hold Ctrl to pick several depots">${dops()}</select><label class=mu id=nul><input type=checkbox id=nu> Can upload data</label><button class=btn onclick="addp()">Add user</button></div><div id=pe></div>
+ <div class=sc><table><tr><th>Email<th>Role<th>Region access<th>Depot access<th>Can upload<th>Status<th></tr>${(p.data||[]).map(x=>{const me_=x.email==me.email,e=esc(x.email);return`<tr><td>${e}${me_?' (you)':''}<td>${me_?x.role:`<select onchange="upd('${e}','role',this.value)">${ropts(x.role)}</select>`}<td>${me_||x.role!='regional'?'—':`<select onchange="upd('${e}','region',this.value||null)"><option value="">—</option>${opts(REG,x.region)}</select>`}<td>${me_||x.role!='depot'?'—':`<select multiple size=3 onchange="upd('${e}','depots',[...this.selectedOptions].map(o=>o.value))">${dops(x.depots)}</select>`}<td>${x.role=='admin'?'Yes':x.role=='depot'?'Never':`<button class=sm onclick="upd('${e}','can_upload',${!x.can_upload})">${x.can_upload?'Allowed':'Not allowed'}</button>`}<td>${me_?'Active':`<button class=sm onclick="upd('${e}','active',${!x.active})">${x.active?'Active':'Disabled'}</button>`}<td>${me_?'':`<button class=sm onclick="rm('${e}')">Remove</button>`}</tr>`}).join('')}</table></div></section>
+ <section><h3>Depots &amp; regions</h3><p class=mu>Add a new depot here before uploading a file that contains it. Changing a depot's region also updates its already uploaded data.</p><div class=row style="margin-bottom:12px"><input type=text id=xd placeholder="New depot name"><select id=xr>${opts(REG)}</select><button class=btn onclick="addd()">Add depot</button></div><div id=de></div><div class=sc><table><tr><th>Depot<th>Region<th></tr>${(dp.data||[]).map(x=>{const d=esc(x.depot);return`<tr><td>${d}<td><select onchange="setr('${d}',this.value)">${opts(REG,x.region)}</select><td><button class=sm onclick="rmd('${d}')">Remove</button></tr>`}).join('')}</table></div></section>
+ <section><h3>Upload history</h3><div class=sc><table><tr><th>Month<th>File<th>Rows<th>Uploaded by<th>When<th></tr>${(b.data||[]).map(x=>`<tr><td>${mon(x.mnth)}<td>${esc(x.filename)}<td>${(x.row_count||0).toLocaleString('en-IN')}<td>${esc(x.uploaded_by)}<td>${new Date(x.uploaded_at).toLocaleString('en-IN')}<td><button class=sm onclick="delb(${x.id},'${mon(x.mnth)}')">Delete month data</button></tr>`).join('')}</table></div></section>`;fv()}
+async function addp(){
+ const e=$('#ne').value.trim().toLowerCase(),r=$('#nr').value,g=$('#ng').value||null,d=[...$('#nd').selectedOptions].map(o=>o.value),pe=$('#pe');
+ if(!/^[^\s@'"<>]+@[^\s@'"<>]+\.[^\s@'"<>]+$/.test(e))return pe.innerHTML='<div class=err>Enter a valid email.</div>';
+ if(r=='regional'&&!g)return pe.innerHTML='<div class=err>Choose a region for a regional head.</div>';if(r=='depot'&&!d.length)return pe.innerHTML='<div class=err>Choose at least one depot.</div>';
+ const{error}=await sb.from('profiles').insert({email:e,role:r,region:r=='regional'?g:null,depots:r=='depot'?d:[],can_upload:r!='depot'&&$('#nu').checked});if(error)return pe.innerHTML=`<div class=err>${esc(error.message)}</div>`;admn()}
+async function upd(e,k,x){const u={[k]:x};if(k=='role'){u.region=null;u.depots=[];if(x=='depot')u.can_upload=false}const{error}=await sb.from('profiles').update(u).eq('email',e);if(error)alert(error.message);admn()}
+async function rm(e){if(!confirm('Remove '+e+'? They will lose access.'))return;const{error}=await sb.from('profiles').delete().eq('email',e);if(error)alert(error.message);admn()}
+async function addd(){const d=$('#xd').value.trim().toUpperCase().replace(/\s+/g,' '),r=$('#xr').value,pe=$('#de');
+ if(!/^[A-Z0-9][A-Z0-9 .-]*$/.test(d))return pe.innerHTML='<div class=err>Use only letters, numbers, spaces, dots or hyphens in the depot name.</div>';
+ const{error}=await sb.from('master_depot_regions').insert({depot:d,region:r});if(error)return pe.innerHTML=`<div class=err>${esc(error.message)}</div>`;admn()}
+async function setr(d,r){let x=await sb.from('master_depot_regions').update({region:r}).eq('depot',d);if(!x.error)x=await sb.from('depot_monthly_operations').update({region:r}).eq('depot',d);if(x.error)alert(x.error.message);admn()}
+async function rmd(d){if(!confirm('Remove depot '+d+'? This only works if it has no uploaded data.'))return;const{error}=await sb.from('master_depot_regions').delete().eq('depot',d);if(error)alert(error.message);admn()}
+async function delb(id,m){if(!confirm('Delete all data for '+m+'?'))return;const{error}=await sb.from('upload_batches').delete().eq('id',id);if(error)alert(error.message);admn()}
+boot();
+</script></body></html>
