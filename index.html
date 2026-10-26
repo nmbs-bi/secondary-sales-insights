@@ -37,7 +37,7 @@ table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 10px
 .btn{background:#0e1a3a;color:#fff;border:0;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer}.btn:disabled{opacity:.5}
 .sm{background:#fff;border:1px solid #c9d2e6;border-radius:8px;padding:5px 10px;cursor:pointer}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(480px,1fr));gap:16px;margin-bottom:16px}.gr section{margin:0}.cv{position:relative;height:290px}.chip{background:#fff;border:1px solid #c9d2e6;border-radius:20px;padding:5px 13px;cursor:pointer;font-weight:600;color:#1a2238}.chip.on{background:#0e1a3a;color:#fff;border-color:#0e1a3a}.stk{position:sticky;top:var(--hh,63px);z-index:4;background:#f3f5f9;padding:12px 0 6px;margin:-12px 0 12px;border-bottom:1px solid #e3e7f0}.stk .bar0{margin-bottom:10px}.stk .kp{margin-bottom:10px}.stk .k{padding:8px 12px}.stk .k b{font-size:20px}.stk .row{margin-bottom:6px!important}.dl{display:block;white-space:nowrap;font-weight:600}@media(max-width:800px){.stk{position:static}.gr{grid-template-columns:1fr}}
+.gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(480px,1fr));gap:16px;margin-bottom:16px}.gr section{margin:0}.cv{position:relative;height:290px}.chip{background:#fff;border:1px solid #c9d2e6;border-radius:20px;padding:5px 13px;cursor:pointer;font-weight:600;color:#1a2238}.chip.on{background:#0e1a3a;color:#fff;border-color:#0e1a3a}.stk{position:sticky;top:var(--hh,63px);z-index:4;background:#f3f5f9;padding:12px 0 6px;margin:-12px 0 12px;border-bottom:1px solid #e3e7f0}.stk .bar0{margin-bottom:10px}.stk .kp{margin-bottom:10px}.stk .k{padding:8px 12px}.stk .k b{font-size:20px}.stk .row{margin-bottom:6px!important}.cl{cursor:pointer}.cl:hover{background:#f3f5f9}.hl{background:#fff6e0}.dl{display:block;white-space:nowrap;font-weight:600}@media(max-width:800px){.stk{position:static}.gr{grid-template-columns:1fr}}
 </style></head><body><div id="app"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -74,7 +74,7 @@ app.innerHTML=`<header><img src=logo.png width=40 height=40 alt=""><b>NMBS</b><s
 <nav><button id=t-dash onclick="show('dash')">Dashboard</button>${FULL.includes(p.role)?`<button id=t-lead onclick="show('lead')">Leaderboard</button>`:''}${ad||(p.can_upload&&p.role!='depot')?`<button id=t-upl onclick="show('upl')">Upload data</button>`:''}${ad?`<button id=t-admn onclick="show('admn')">Admin controls</button>`:''}</nav>
 <div class=u>${esc(email)}<i>${esc(ROLE[p.role])}</i><button onclick="out()">Logout</button></div></header><main id=v></main>`;
 show(p.role=='director'?'lead':'dash')}
-function show(t){if(t=='dash'||t=='lead')cm='';if(t=='dash'){rf='';df=''}document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));({dash,lead,upl,admn})[t]()}
+function show(t){if(t=='dash'||t=='lead'){cm='';rf='';df=''}document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));({dash,lead,upl,admn})[t]()}
 const hh=()=>{const h=document.querySelector('header');if(h)document.documentElement.style.setProperty('--hh',h.offsetHeight+'px')};window.addEventListener('resize',hh);
 const nm=n=>{n=+n||0;return n>=1e7?(n/1e7).toFixed(2)+' Cr':n>=1e5?(n/1e5).toFixed(2)+' L':Math.round(n).toLocaleString('en-IN')},sh=nm;
 const VL={id:'vl',afterDatasetsDraw(ch){const ty=ch.config.type,hz=ch.options.indexAxis=='y',x=ch.ctx,ds=ch.data.datasets[0],tot=ds.data.reduce((s,q)=>s+ +q,0)||1;x.save();x.font='600 11px "Segoe UI",sans-serif';
@@ -139,19 +139,54 @@ async function dash(){
  const tp=[...d0].sort((x,y)=>y[key(dm)]-x[key(dm)]).slice(0,10);
  mkc('c4',{type:'bar',data:{labels:tp.map(r=>r.depot),datasets:[{data:tp.map(r=>+r[key(dm)]),backgroundColor:tp.map(r=>!df||df==r.depot?(RC[r.region]||'#0e1a3a'):'#d5dbea'),borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}},onClick:(e,el)=>{if(el.length)pick('df',tp[el[0].index].depot)}}});
 }
-let lm='soldval';
+const SZ=['S','M','L','XL'],MS=['sold','pro','stock','denied','other'];
+let lm='sold',showAll=false;
+const LK=(k,x)=>{if(k=='lm')lm=x;if(k=='un')un=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;if(k=='all')showAll=!showAll;lead()};
 async function lead(){
-const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
-const{data:b}=await sb.from('upload_batches').select('mnth'),ms=[...new Set((b||[]).map(x=>x.mnth))].sort().reverse();
-if(!ms.length)return v.innerHTML='<div class=em>No data yet.</div>';
-if(!ms.includes(cm))cm=ms[0];
-const a=await sb.rpc('dash_by_depot',{p_from:cm,p_to:cm});if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
-const MET={soldval:'Sales value',proval:'Provisional demand (PD)',stockval:'Closing stock value',deniedval:'Denied value',otherval:'Debit notes'},R={};
-a.data.forEach(r=>R[r.region]=(R[r.region]||0)+ +r[lm]);
-const rr=Object.entries(R).sort((x,y)=>y[1]-x[1]),dd=[...a.data].sort((x,y)=>y[lm]-x[lm]),tot=dd.reduce((s,r)=>s+ +r[lm],0)||1,rm=rr[0]?rr[0][1]||1:1,dm=dd[0]?+dd[0][lm]||1:1;
-v.innerHTML=`<div class=bar0><select onchange="cm=this.value;lead()">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</select><select onchange="lm=this.value;lead()">${Object.entries(MET).map(([k,n])=>`<option value=${k} ${k==lm?'selected':''}>${n}</option>`).join('')}</select><span class=mu>Ranked highest first, ${mon(cm)}</span></div>
-<section><h3>Regions</h3><div class=sc><table><tr><th>Rank<th>Region<th>${MET[lm]}<th>Share</tr>${rr.map(([n,x],i)=>`<tr><td>${i+1}<td>${n}<td><div class=bar><i style="width:${x/rm*100}%"></i></div>${cr(x)}<td>${(x/tot*100).toFixed(1)}%</tr>`).join('')}</table></div></section>
-<section><h3>Depots</h3><div class=sc><table><tr><th>Rank<th>Depot<th>Region<th>${MET[lm]}<th>Share</tr>${dd.map((r,i)=>`<tr><td>${i+1}<td>${esc(r.depot)}<td>${r.region}<td><div class=bar><i style="width:${+r[lm]/dm*100}%"></i></div>${cr(r[lm])}<td>${(+r[lm]/tot*100).toFixed(1)}%</tr>`).join('')}</table></div></section>`}
+ CH.forEach(c=>c.destroy());CH=[];
+ const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
+ const{data:b}=await sb.from('upload_batches').select('mnth'),ms=[...new Set((b||[]).map(x=>x.mnth))].sort().reverse();
+ if(!ms.length)return v.innerHTML='<div class=em>No data yet.</div>';
+ const fys=[...new Set(ms.map(fyOf))].sort((x,y)=>y-x),fm=y=>ms.filter(m=>fyOf(m)==y).sort();
+ if(/^FY\d+$/.test(cm)){if(!fys.includes(+cm.slice(2)))cm=ms[0]}else if(!ms.includes(cm))cm=ms[0];
+ const FYm=/^FY\d+$/.test(cm),fy=FYm?+cm.slice(2):0,fmn=FYm?fm(fy):[cm],from=fmn[0],to=fmn[fmn.length-1],nmo=fmn.length;
+ const fyL=y=>{const q=fm(y);return fyN(y)+' ('+MN[+q[0].slice(5,7)-1]+'–'+MN[+q[q.length-1].slice(5,7)-1]+')'};
+ const[a,ds,pp]=await Promise.all([sb.rpc('dash_by_depot',{p_from:from,p_to:to}),sb.from('master_depot_regions').select('depot,depot_size'),sb.rpc('dash_by_product',{p_from:from,p_to:to,p_region:rf||null,p_depot:df||null})]);
+ if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
+ if(a.data.length&&!('sold_u' in a.data[0]))return v.innerHTML='<div class=err>The database update (schema_update2.sql) has not been run yet.</div>';
+ const sz={};(ds.data||[]).forEach(x=>sz[x.depot]=x.depot_size);
+ const all=a.data,K=key(lm),isF=lm=='sold'||lm=='denied'||lm=='other',apm=FYm&&isF&&nmo>1,U=UL[un];
+ const Rg={};all.forEach(r=>Rg[r.region]=(Rg[r.region]||0)+ +r[K]);
+ const rr=Object.entries(Rg).sort((x,y)=>y[1]-x[1]),rt=rr.reduce((s,x)=>s+x[1],0)||1,rm=rr[0]?rr[0][1]||1:1;
+ if(rf&&!(rf in Rg))rf='';
+ const d0=(rf?all.filter(r=>r.region==rf):all).slice().sort((x,y)=>y[K]-x[K]),dt=d0.reduce((s,r)=>s+ +r[K],0)||1,dmx=d0[0]?+d0[0][K]||1:1;
+ if(df&&!d0.some(r=>r.depot==df))df='';
+ const prs=pp.error?[]:[...pp.data].sort((x,y)=>y[K]-x[K]),pt=prs.reduce((s,r)=>s+ +r[K],0)||1,pmx=prs[0]?+prs[0][K]||1:1,shown=showAll?prs:prs.slice(0,25);
+ const pl=FYm?((lm=='stock'||lm=='pro')?'as at '+mon(to):fyN(fy)):mon(cm),pc=x=>(x/rt*100).toFixed(1)+'%',sc=rf?' · '+rf:'',sd=df?' · '+esc(df):'';
+ const fl=[rf?`<button class=chip onclick="LK('rf','${rf}')">Region: ${rf} ✕</button>`:'',df?`<button class=chip onclick="LK('df','${esc(df)}')">Depot: ${esc(df)} ✕</button>`:''].join('');
+ v.innerHTML=`<div class=stk><div class=bar0><select onchange="LK('cm',this.value)"><optgroup label="Financial year">${fys.map(y=>`<option value=FY${y} ${cm=='FY'+y?'selected':''}>${fyL(y)}</option>`).join('')}</optgroup><optgroup label="Months">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</optgroup></select>
+ <select onchange="LK('un',this.value)">${Object.entries(UT).map(([k,n])=>`<option value=${k} ${k==un?'selected':''}>${n}</option>`).join('')}</select>
+ <select onchange="LK('lm',this.value)">${MS.map(k=>`<option value=${k} ${k==lm?'selected':''}>${NMX(k)}</option>`).join('')}</select>
+ <span class=mu>Ranked highest first, ${FYm?fyL(fy):mon(cm)}</span>${fl}<span class=mu style="margin-left:auto">Tip: click a region, depot or row to filter</span></div></div>
+ <div class=gr>
+ <section><h3>${NMX(lm)} · share by region · ${pl}</h3><div class=cv><canvas id=l1></canvas></div></section>
+ <section><h3>Region ranking · ${pl}</h3><div class=cv><canvas id=l2></canvas></div></section>
+ <section><h3>Top 10 depots${sc} · ${pl}</h3><div class=cv><canvas id=l3></canvas></div></section>
+ <section><h3>Top 10 products${sc}${sd} · ${pl}</h3><div class=cv><canvas id=l4></canvas></div></section></div>
+ <section><h3>Regions</h3><div class=sc><table><tr><th>Rank<th>Region<th>${NMX(lm)}<th>Share${apm?'<th>APM':''}</tr>${rr.map(([n,x],i)=>`<tr class="cl ${rf==n?'hl':''}" onclick="LK('rf','${n}')"><td>${i+1}<td>${n}<td><div class=bar><i style="width:${x/rm*100}%"></i></div>${fmt(x)}<td>${pc(x)}${apm?'<td>'+fmt(x/nmo):''}</tr>`).join('')}</table></div></section>
+ <section><h3>Depots${sc}</h3><div class=sc><table><tr><th>Rank<th>Depot<th>Region<th>Size<th>${NMX(lm)}<th>Share${apm?'<th>APM':''}</tr>${d0.map((r,i)=>`<tr class="cl ${df==r.depot?'hl':''}" onclick="LK('df','${esc(r.depot)}')"><td>${i+1}<td>${esc(r.depot)}<td>${r.region}<td>${sz[r.depot]||'—'}<td><div class=bar><i style="width:${+r[K]/dmx*100}%"></i></div>${fmt(r[K])}<td>${(+r[K]/dt*100).toFixed(1)}%${apm?'<td>'+fmt(+r[K]/nmo):''}</tr>`).join('')}</table></div></section>
+ <section><h3>Products${sc}${sd} · ${pl}</h3>${pp.error?`<div class=err>${esc(pp.error.message)}</div>`:`<div class=sc><table><tr><th>Rank<th>SKU<th>Product<th>Supplier<th>${NMX(lm)}<th>Share</tr>${shown.map((r,i)=>`<tr><td>${i+1}<td>${r.item_index}<td>${esc(r.nomenclature)}<td>${esc(r.supname)}<td><div class=bar><i style="width:${+r[K]/pmx*100}%"></i></div>${fmt(r[K])}<td>${(+r[K]/pt*100).toFixed(1)}%</tr>`).join('')}</table></div>${prs.length>25?`<p><button class=sm onclick="LK('all')">${showAll?'Show top 25 only':'Show all '+prs.length+' products'}</button></p>`:''}`}</section>`;
+ hh();
+ if(typeof Chart=='undefined')return;
+ Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
+ const rn=rr.map(x=>x[0]);
+ mkc('l1',{type:'doughnut',data:{labels:rr.map(([n,x])=>n+' · '+fmt(x)),datasets:[{data:rr.map(x=>x[1]),backgroundColor:rn.map(x=>!rf||rf==x?RC[x]:RC[x]+'44'),borderWidth:2}]},options:{maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right'},tooltip:TIP},onClick:(e,el)=>{if(el.length)LK('rf',rn[el[0].index])}}});
+ mkc('l2',{type:'bar',data:{labels:rn,datasets:[{data:rr.map(x=>x[1]),backgroundColor:rn.map(x=>!rf||rf==x?RC[x]:RC[x]+'55'),borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}},onClick:(e,el)=>{if(el.length)LK('rf',rn[el[0].index])}}});
+ const t10=d0.slice(0,10);
+ mkc('l3',{type:'bar',data:{labels:t10.map(r=>r.depot),datasets:[{data:t10.map(r=>+r[K]),backgroundColor:t10.map(r=>!df||df==r.depot?(RC[r.region]||'#0e1a3a'):'#d5dbea'),borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}},onClick:(e,el)=>{if(el.length)LK('df',t10[el[0].index].depot)}}});
+ const p10=prs.slice(0,10);
+ mkc('l4',{type:'bar',data:{labels:p10.map(r=>String(r.nomenclature||'').slice(0,26)),datasets:[{data:p10.map(r=>+r[K]),backgroundColor:'#c8a24a',borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>{const r=p10[c[0].dataIndex];return r?r.nomenclature+' (SKU '+r.item_index+')':''},label:TIP.callbacks.label}}},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}}}});
+}
 const H='MNTH GPCD INDEX NOMENCLATURE PACK ITYPE GENCD GENNAME SUPNAME DEPOT WSRATEPERUNIT SOLDCS SOLDUN OTHISSCS OTHISSUN STOCKCS STOCKUN DENIEDCS DENIEDUN PRO_CASES PRO_UNITS'.split(' ');
 const C={gpcd:'GPCD',item_index:'INDEX',nomenclature:'NOMENCLATURE',pack:'PACK',itype:'ITYPE',gencd:'GENCD',genname:'GENNAME',supname:'SUPNAME',wsrateperunit:'WSRATEPERUNIT',soldcs:'SOLDCS',soldun:'SOLDUN',othisscs:'OTHISSCS',othissun:'OTHISSUN',stockcs:'STOCKCS',stockun:'STOCKUN',deniedcs:'DENIEDCS',deniedun:'DENIEDUN',pro_cases:'PRO_CASES',pro_units:'PRO_UNITS'},TX=['nomenclature','itype','genname','supname'];
 function upl(){$('#v').innerHTML=`<h2>Upload monthly Excel</h2><p class=mu>Use the same 21-column format as the sample file. A month that is already uploaded is blocked; an admin must delete it first. PORT BLAIR is converted to SRI VIJAYA PURAM automatically.</p><section><input type=file accept=".xlsx,.xls" onchange="rd(this.files[0])"><div id=pv></div></section>`}
@@ -185,12 +220,12 @@ const r=await sb.rpc('upload_month',{p_mnth:m,p_filename:pend.name,p_rows:rs});i
 f('<div class=ok>Upload complete. The dashboard now shows the new data.</div>');pend=null}
 async function admn(){
 const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
-const[p,b,dp]=await Promise.all([sb.from('profiles').select('*').order('email'),sb.from('upload_batches').select('*').order('mnth',{ascending:false}),sb.from('master_depot_regions').select('depot,region').order('depot')]);
+let[p,b,dp]=await Promise.all([sb.from('profiles').select('*').order('email'),sb.from('upload_batches').select('*').order('mnth',{ascending:false}),sb.from('master_depot_regions').select('depot,region,depot_size').order('depot')]);if(dp.error)dp=await sb.from('master_depot_regions').select('depot,region').order('depot');
 const DP=(dp.data||[]).map(x=>x.depot),dops=s=>DP.map(x=>`<option ${(s||[]).includes(x)?'selected':''}>${x}</option>`).join('');
 v.innerHTML=`<h2>Admin controls</h2><p class=mu>Only approved emails can sign in. Depot teams see their assigned depots (several people can share one depot), regional heads see their region, and the national head and director see everything. Only adminscan edit.</p>
 <section><h3>Team access</h3><div class=row style="margin-bottom:12px"><input type=email id=ne placeholder="Google email"><select id=nr onchange="fv()">${ropts('depot')}</select><select id=ng hidden><option value="">Choose region</option>${opts(REG)}</select><select id=nd multiple size=4 hidden title="Hold Ctrl to pick several depots">${dops()}</select><label class=mu id=nul><input type=checkbox id=nu> Can upload data</label><button class=btn onclick="addp()">Add user</button></div><div id=pe></div>
 <div class=sc><table><tr><th>Email<th>Role<th>Region access<th>Depot access<th>Can upload<th>Status<th></tr>${(p.data||[]).map(x=>{const me_=x.email==me.email,e=esc(x.email);return`<tr><td>${e}${me_?' (you)':''}<td>${me_?x.role:`<select onchange="upd('${e}','role',this.value)">${ropts(x.role)}</select>`}<td>${me_||x.role!='regional'?'—':`<select onchange="upd('${e}','region',this.value||null)"><option value="">—</option>${opts(REG,x.region)}</select>`}<td>${me_||x.role!='depot'?'—':`<select multiple size=3 onchange="upd('${e}','depots',[...this.selectedOptions].map(o=>o.value))">${dops(x.depots)}</select>`}<td>${x.role=='admin'?'Yes':x.role=='depot'?'Never':`<button class=sm onclick="upd('${e}','can_upload',${!x.can_upload})">${x.can_upload?'Allowed':'Not allowed'}</button>`}<td>${me_?'Active':`<button class=sm onclick="upd('${e}','active',${!x.active})">${x.active?'Active':'Disabled'}</button>`}<td>${me_?'':`<button class=sm onclick="rm('${e}')">Remove</button>`}</tr>`}).join('')}</table></div></section>
-<section><h3>Depots &amp; regions</h3><p class=mu>Add a new depot here before uploading a file that contains it. Changing a depot's region also updates its already uploaded data.</p><div class=row style="margin-bottom:12px"><input type=text id=xd placeholder="New depot name"><select id=xr>${opts(REG)}</select><button class=btn onclick="addd()">Add depot</button></div><div id=de></div><div class=sc><table><tr><th>Depot<th>Region<th></tr>${(dp.data||[]).map(x=>{const d=esc(x.depot);return`<tr><td>${d}<td><select onchange="setr('${d}',this.value)">${opts(REG,x.region)}</select><td><button class=sm onclick="rmd('${d}')">Remove</button></tr>`}).join('')}</table></div></section>
+<section><h3>Depots &amp; regions</h3><p class=mu>Add a new depot here before uploading a file that contains it. Changing a depot's region also updates its already uploaded data.</p><div class=row style="margin-bottom:12px"><input type=text id=xd placeholder="New depot name"><select id=xr>${opts(REG)}</select><select id=xz><option value="">Size</option>${opts(SZ)}</select><button class=btn onclick="addd()">Add depot</button></div><div id=de></div><div class=sc><table><tr><th>Depot<th>Region<th>Size<th></tr>${(dp.data||[]).map(x=>{const d=esc(x.depot);return`<tr><td>${d}<td><select onchange="setr('${d}',this.value)">${opts(REG,x.region)}</select><td><select onchange="setz('${d}',this.value)"><option value="">—</option>${opts(SZ,x.depot_size)}</select><td><button class=sm onclick="rmd('${d}')">Remove</button></tr>`}).join('')}</table></div></section>
 <section><h3>Upload history</h3><div class=sc><table><tr><th>Month<th>File<th>Rows<th>Uploaded by<th>When<th></tr>${(b.data||[]).map(x=>`<tr><td>${mon(x.mnth)}<td>${esc(x.filename)}<td>${(x.row_count||0).toLocaleString('en-IN')}<td>${esc(x.uploaded_by)}<td>${new Date(x.uploaded_at).toLocaleString('en-IN')}<td><button class=sm onclick="delb(${x.id},'${mon(x.mnth)}')">Delete month data</button></tr>`).join('')}</table></div></section>`;fv()}
 async function addp(){
 const e=$('#ne').value.trim().toLowerCase(),r=$('#nr').value,g=$('#ng').value||null,d=[...$('#nd').selectedOptions].map(o=>o.value),pe=$('#pe');
@@ -201,8 +236,9 @@ async function upd(e,k,x){const u={[k]:x};if(k=='role'){u.region=null;u.depots=[
 async function rm(e){if(!confirm('Remove '+e+'? They will lose access.'))return;const{error}=await sb.from('profiles').delete().eq('email',e);if(error)alert(error.message);admn()}
 async function addd(){const d=$('#xd').value.trim().toUpperCase().replace(/\s+/g,' '),r=$('#xr').value,pe=$('#de');
 if(!/^[A-Z0-9][A-Z0-9 .-]*$/.test(d))return pe.innerHTML='<div class=err>Use only letters, numbers, spaces, dots or hyphens inthe depot name.</div>';
-const{error}=await sb.from('master_depot_regions').insert({depot:d,region:r});if(error)return pe.innerHTML=`<div class=err>${esc(error.message)}</div>`;admn()}
+const{error}=await sb.from('master_depot_regions').insert({depot:d,region:r,depot_size:$('#xz').value||null});if(error)return pe.innerHTML=`<div class=err>${esc(error.message)}</div>`;admn()}
 async function setr(d,r){let x=await sb.from('master_depot_regions').update({region:r}).eq('depot',d);if(!x.error)x=await sb.from('depot_monthly_operations').update({region:r}).eq('depot',d);if(x.error)alert(x.error.message);admn()}
+async function setz(d,z){const{error}=await sb.from('master_depot_regions').update({depot_size:z||null}).eq('depot',d);if(error)alert(error.message);admn()}
 async function rmd(d){if(!confirm('Remove depot '+d+'? This only works if it has no uploaded data.'))return;const{error}=await sb.from('master_depot_regions').delete().eq('depot',d);if(error)alert(error.message);admn()}
 async function delb(id,m){if(!confirm('Delete all data for '+m+'?'))return;const{error}=await sb.from('upload_batches').delete().eq('id',id);if(error)alert(error.message);admn()}
 boot();
