@@ -37,7 +37,7 @@ table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 10px
 .btn{background:#0e1a3a;color:#fff;border:0;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer}.btn:disabled{opacity:.5}
 .sm{background:#fff;border:1px solid #c9d2e6;border-radius:8px;padding:5px 10px;cursor:pointer}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px;margin-bottom:16px}.gr section{margin:0}.cv{position:relative;height:280px}.chip{background:#fff;border:1px solid #c9d2e6;border-radius:20px;padding:5px 13px;cursor:pointer;font-weight:600;color:#1a2238}.chip.on{background:#0e1a3a;color:#fff;border-color:#0e1a3a}
+.gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(480px,1fr));gap:16px;margin-bottom:16px}.gr section{margin:0}.cv{position:relative;height:290px}.chip{background:#fff;border:1px solid #c9d2e6;border-radius:20px;padding:5px 13px;cursor:pointer;font-weight:600;color:#1a2238}.chip.on{background:#0e1a3a;color:#fff;border-color:#0e1a3a}.stk{position:sticky;top:var(--hh,63px);z-index:4;background:#f3f5f9;padding:12px 0 6px;margin:-12px 0 12px;border-bottom:1px solid #e3e7f0}.stk .bar0{margin-bottom:10px}.stk .kp{margin-bottom:10px}.stk .k{padding:8px 12px}.stk .k b{font-size:20px}.stk .row{margin-bottom:6px!important}.dl{display:block;white-space:nowrap;font-weight:600}@media(max-width:800px){.stk{position:static}.gr{grid-template-columns:1fr}}
 </style></head><body><div id="app"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -74,11 +74,17 @@ app.innerHTML=`<header><img src=logo.png width=40 height=40 alt=""><b>NMBS</b><s
 <nav><button id=t-dash onclick="show('dash')">Dashboard</button>${FULL.includes(p.role)?`<button id=t-lead onclick="show('lead')">Leaderboard</button>`:''}${ad||(p.can_upload&&p.role!='depot')?`<button id=t-upl onclick="show('upl')">Upload data</button>`:''}${ad?`<button id=t-admn onclick="show('admn')">Admin controls</button>`:''}</nav>
 <div class=u>${esc(email)}<i>${esc(ROLE[p.role])}</i><button onclick="out()">Logout</button></div></header><main id=v></main>`;
 show(p.role=='director'?'lead':'dash')}
-function show(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));({dash,lead,upl,admn})[t]()}
+function show(t){if(t=='dash'||t=='lead')cm='';if(t=='dash'){rf='';df=''}document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));({dash,lead,upl,admn})[t]()}
+const hh=()=>{const h=document.querySelector('header');if(h)document.documentElement.style.setProperty('--hh',h.offsetHeight+'px')};window.addEventListener('resize',hh);
+const sh=n=>{n=+n||0;return n>=1e7?(n/1e7).toFixed(2)+' Cr':n>=1e5?(n/1e5).toFixed(2)+' L':Math.round(n).toLocaleString('en-IN')};
+const VL={id:'vl',afterDatasetsDraw(ch){const ty=ch.config.type,hz=ch.options.indexAxis=='y',x=ch.ctx,ds=ch.data.datasets[0],tot=ds.data.reduce((s,q)=>s+ +q,0)||1;x.save();x.font='600 11px "Segoe UI",sans-serif';
+ ch.getDatasetMeta(0).data.forEach((el,i)=>{const q=+ds.data[i];if(!q)return;
+ if(ty=='bar'){x.fillStyle='#1a2238';if(hz){x.textAlign='left';x.textBaseline='middle';x.fillText(sh(q),el.x+6,el.y)}else{x.textAlign='center';x.textBaseline='bottom';x.fillText(sh(q),el.x,el.y-4)}}
+ else if(q/tot>.06){const p=el.tooltipPosition(),bg=String(ds.backgroundColor[i]),c=bg.slice(1,7),l=.299*parseInt(c.slice(0,2),16)+.587*parseInt(c.slice(2,4),16)+.114*parseInt(c.slice(4,6),16);x.fillStyle=(bg.length>7||l>140)?'#1a2238':'#fff';x.textAlign='center';x.textBaseline='middle';x.fillText(sh(q),p.x,p.y)}});x.restore()}};
 let dm='soldval',df='',CH=[];
 const MT={soldval:'Sales value',stockval:'Closing stock value',deniedval:'Denied value',otherval:'Debit notes',proval:'Provisional demand (PD)'};
 const RC={CENTRAL:'#0e1a3a',EAST:'#c8a24a',NORTH:'#3d5a99',SOUTH:'#8fa3d1',WEST:'#b5483a'};
-const mkc=(id,cfg)=>CH.push(new Chart(document.getElementById(id),cfg));
+const mkc=(id,cfg)=>CH.push(new Chart(document.getElementById(id),{plugins:[VL],...cfg}));
 const TIP={callbacks:{label:c=>' '+cr(c.raw)}};
 const pick=(k,x)=>{if(k=='dm')dm=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;dash()};
 async function dash(){
@@ -96,30 +102,31 @@ async function dash(){
  if(df&&!d0.some(r=>r.depot==df))df='';
  const d=df?d0.filter(r=>r.depot==df):d0,S=k=>d.reduce((s,r)=>s+ +r[k],0),tr=t.data||[];
  const ti=tr.findIndex(r=>r.mnth==cm),pv=ti>0?tr[ti-1]:null;
- const dl=k=>{if(rf||df||!pv||!+pv[k])return'';const p=(S(k)/+pv[k]-1)*100;return` &nbsp;${p>=0?'▲':'▼'} ${Math.abs(p).toFixed(1)}% vs ${mon(pv.mnth)}`};
+ const dl=k=>{if(rf||df||!pv||!+pv[k])return'';const p=(S(k)/+pv[k]-1)*100;return`<span class=dl>${p>=0?'▲':'▼'} ${Math.abs(p).toFixed(1)}% vs ${mon(pv.mnth)}</span>`};
  const K=[['Sales value','soldval','Sales in '+mon(cm)],['Closing stock value','stockval','Stock at end of '+mon(cm)],['Denied value','deniedval','Lost demand in '+mon(cm)],['Debit notes','otherval','Other issues in '+mon(cm)],['Provisional demand (PD)','proval','PD for '+mon(pm(cm))]];
  const mx=Math.max(1,...d.map(r=>+r.soldval));
  const fl=[rf?`<button class=chip onclick="pick('rf','${rf}')">Region: ${rf} ✕</button>`:'',df?`<button class=chip onclick="pick('df','${esc(df)}')">Depot: ${esc(df)} ✕</button>`:''].join('');
- v.innerHTML=`<div class=bar0><select onchange="pick('cm',this.value)">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</select>
+ v.innerHTML=`<div class=stk><div class=bar0><select onchange="pick('cm',this.value)">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</select>
  <span class=mu>${FULL.includes(me.role)?ROLE[me.role]+' view':esc(scope(me))}</span>${fl}<span class=mu style="margin-left:auto">Tip: click a chart slice or bar to filter</span></div>
  <div class=kp>${K.map(([n,k,s])=>`<div class=k><small>${n}</small><b>${cr(S(k))}</b><em>${s}${dl(k)}</em></div>`).join('')}<div class="k hz"><small>PD Month</small><b>${mon(pm(cm))}</b></div></div>
  <div class=row style="margin-bottom:12px"><b>Show charts for:</b>${Object.entries(MT).map(([k,n])=>`<button class="chip ${k==dm?'on':''}" onclick="pick('dm','${k}')">${n}</button>`).join('')}</div>
- <div class=gr>
+ </div><div class=gr>
  <section><h3>${MT[dm]} by region · ${mon(cm)}</h3><div class=cv><canvas id=c1></canvas></div></section>
  <section><h3>Sales vs denied vs debit notes · ${mon(cm)}</h3><div class=cv><canvas id=c2></canvas></div></section>
  <section><h3>${MT[dm]} by month (all regions)</h3><div class=cv><canvas id=c3></canvas></div></section>
  <section><h3>Top 10 depots · ${MT[dm]}</h3><div class=cv><canvas id=c4></canvas></div></section></div>
  <section><h3>Depots in ${mon(cm)}</h3><div class=sc><table><tr><th>Depot<th>Region<th>Sales value<th>Closing stock<th>Denied<th>Debit notes<th>PD for ${mon(pm(cm))}</tr>
  ${d.map(r=>`<tr><td>${esc(r.depot)}<td>${r.region}<td><div class=bar><i style="width:${+r.soldval/mx*100}%"></i></div>${cr(r.soldval)}<td>${cr(r.stockval)}<td>${cr(r.deniedval)}<td>${cr(r.otherval)}<td>${cr(r.proval)}</tr>`).join('')}</table></div></section>`;
+ hh();
  if(typeof Chart=='undefined')return;
  Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
  const R={};all.forEach(r=>R[r.region]=(R[r.region]||0)+ +r[dm]);
  const rn=Object.keys(R).sort();
- mkc('c1',{type:'doughnut',data:{labels:rn,datasets:[{data:rn.map(x=>R[x]),backgroundColor:rn.map(x=>!rf||rf==x?RC[x]:RC[x]+'44'),borderWidth:2}]},options:{maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right'},tooltip:TIP},onClick:(e,el)=>{if(el.length)pick('rf',rn[el[0].index])}}});
- mkc('c2',{type:'doughnut',data:{labels:['Sales','Denied (lost demand)','Debit notes'],datasets:[{data:[S('soldval'),S('deniedval'),S('otherval')],backgroundColor:['#0e1a3a','#b5483a','#c8a24a'],borderWidth:2}]},options:{maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right'},tooltip:TIP}}});
- mkc('c3',{type:'bar',data:{labels:tr.map(r=>mon(r.mnth)),datasets:[{data:tr.map(r=>+r[dm]),backgroundColor:tr.map(r=>r.mnth==cm?'#0e1a3a':'#c9d2e6'),borderRadius:5}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{y:{ticks:{callback:x=>cr(x)}}},onClick:(e,el)=>{if(el.length)pick('cm',tr[el[0].index].mnth)}}});
+ mkc('c1',{type:'doughnut',data:{labels:rn.map(x=>x+' · '+cr(R[x])),datasets:[{data:rn.map(x=>R[x]),backgroundColor:rn.map(x=>!rf||rf==x?RC[x]:RC[x]+'44'),borderWidth:2}]},options:{maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right'},tooltip:TIP},onClick:(e,el)=>{if(el.length)pick('rf',rn[el[0].index])}}});
+ mkc('c2',{type:'doughnut',data:{labels:['Sales · '+cr(S('soldval')),'Denied · '+cr(S('deniedval')),'Debit notes · '+cr(S('otherval'))],datasets:[{data:[S('soldval'),S('deniedval'),S('otherval')],backgroundColor:['#0e1a3a','#b5483a','#c8a24a'],borderWidth:2}]},options:{maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right'},tooltip:TIP}}});
+ mkc('c3',{type:'bar',data:{labels:tr.map(r=>mon(r.mnth)),datasets:[{data:tr.map(r=>+r[dm]),backgroundColor:tr.map(r=>r.mnth==cm?'#0e1a3a':'#c9d2e6'),borderRadius:5}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{y:{grace:'12%',ticks:{callback:x=>cr(x)}}},onClick:(e,el)=>{if(el.length)pick('cm',tr[el[0].index].mnth)}}});
  const tp=[...d0].sort((x,y)=>y[dm]-x[dm]).slice(0,10);
- mkc('c4',{type:'bar',data:{labels:tp.map(r=>r.depot),datasets:[{data:tp.map(r=>+r[dm]),backgroundColor:tp.map(r=>!df||df==r.depot?(RC[r.region]||'#0e1a3a'):'#d5dbea'),borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{x:{ticks:{callback:x=>cr(x)}}},onClick:(e,el)=>{if(el.length)pick('df',tp[el[0].index].depot)}}});
+ mkc('c4',{type:'bar',data:{labels:tp.map(r=>r.depot),datasets:[{data:tp.map(r=>+r[dm]),backgroundColor:tp.map(r=>!df||df==r.depot?(RC[r.region]||'#0e1a3a'):'#d5dbea'),borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{x:{grace:'22%',ticks:{callback:x=>cr(x)}}},onClick:(e,el)=>{if(el.length)pick('df',tp[el[0].index].depot)}}});
 }
 let lm='soldval';
 async function lead(){
