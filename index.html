@@ -167,7 +167,7 @@ async function lead(){
  const fl=[rf?`<button class=chip onclick="LK('rf','${rf}')">Region: ${rf} ✕</button>`:'',df?`<button class=chip onclick="LK('df','${esc(df)}')">Depot: ${esc(df)} ✕</button>`:''].join('');
  v.innerHTML=`<div class=stk><div class=bar0><select onchange="LK('cm',this.value)"><optgroup label="Financial year">${fys.map(y=>`<option value=FY${y} ${cm=='FY'+y?'selected':''}>${fyL(y)}</option>`).join('')}</optgroup><optgroup label="Months">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</optgroup></select>
  <select onchange="LK('un',this.value)">${Object.entries(UT).map(([k,n])=>`<option value=${k} ${k==un?'selected':''}>${n}</option>`).join('')}</select>
- <select onchange="LK('lm',this.value)">${MS.map(k=>`<option value=${k} ${k==lm?'selected':''}>${NMX(k)}</option>`).join('')}</select>
+ <select onchange="LK('lm',this.value)">${MS.map(k=>`<option value=${k} ${k==lm?'selected':''}>${BN[k]}</option>`).join('')}</select>
  <span class=mu>Ranked highest first, ${FYm?fyL(fy):mon(cm)}</span>${fl}<span class=mu style="margin-left:auto">Tip: click a region, depot or row to filter</span></div></div>
  <div class=gr>
  <section><h3>${NMX(lm)} · share by region · ${pl}</h3><div class=cv><canvas id=l1></canvas></div></section>
