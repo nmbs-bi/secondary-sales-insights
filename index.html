@@ -39,18 +39,27 @@ table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 10px
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(480px,1fr));gap:16px;margin-bottom:16px}.gr section{margin:0}.cv{position:relative;height:290px}.chip{background:#fff;border:1px solid #c9d2e6;border-radius:20px;padding:5px 13px;cursor:pointer;font-weight:600;color:#1a2238}.chip.on{background:#0e1a3a;color:#fff;border-color:#0e1a3a}.stk{position:sticky;top:var(--hh,63px);z-index:4;background:#f3f5f9;padding:12px 0 6px;margin:-12px 0 12px;border-bottom:1px solid #e3e7f0}.stk .bar0{margin-bottom:10px}.stk .kp{margin-bottom:10px}.stk .k{padding:8px 12px}.stk .k b{font-size:20px}.stk .row{margin-bottom:6px!important}.cl{cursor:pointer}.cl:hover{background:#f3f5f9}.hl{background:#fff6e0}.dl{display:block;white-space:nowrap;font-weight:600}@media(max-width:800px){.stk{position:static}.gr{grid-template-columns:1fr}}
 .lg{min-height:100vh;display:grid;align-content:start;justify-items:center;padding:30px 20px;background:#f3f5f9}.card{width:440px;max-width:100%;padding:28px 24px 30px}.card img{display:block;margin:0 auto 18px}.card h1{font-size:22px;margin:0 0 6px}.card p{font-size:14px;margin:0 0 20px}.g{padding:12px;font-size:16px;font-weight:500;gap:10px;border-radius:12px}.card footer{margin-top:26px}
+.u button{padding:7px 12px;border:1px solid #2a3b73;border-radius:8px;color:#fff;font-weight:600}.u button:disabled{opacity:.6}@media(max-width:640px){header{padding:8px 12px}nav{margin-left:0}.u{width:100%;justify-content:space-between}}
 </style></head><body><div id="app"></div>
+<script nomodule>document.getElementById('app').innerHTML='<div style="font:16px Arial,sans-serif;max-width:480px;margin:60px auto;padding:22px;border:1px solid #ccc;border-radius:12px"><b>Your browser is too old for Secondary Sales Insights.</b><br><br>Please open this page in a current version of Google Chrome, Microsoft Edge, Mozilla Firefox or Safari.</div>'</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script>')</script>
+<script>window.supabase||(document.getElementById('app').innerHTML='<div style="font:16px Arial,sans-serif;max-width:480px;margin:60px auto;padding:22px;border:1px solid #ccc;border-radius:12px"><b>This page could not load a required file.</b><br><br>Please check your internet connection, switch off any content blocker for this site, or try another browser.</div>')</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>window.XLSX||document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>')</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>window.Chart||document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"><\/script>')</script>
 <script>
 // 1) Paste your Supabase Project URL and the public "anon" key (never the service_role key)
 const SUPABASE_URL='https://emikqjnqnrgqzpujdwzp.supabase.co', SUPABASE_KEY='sb_publishable_1o6T2WrmhKp52DySiIjq0g_SLY-ri9Z';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let ST;try{ST=window.sessionStorage;ST.setItem('_t','1');ST.removeItem('_t')}catch(e){ST=undefined}
+const wipe=()=>{try{[window.localStorage,window.sessionStorage].forEach(s=>{Object.keys(s).filter(k=>k.indexOf('sb-')==0).forEach(k=>s.removeItem(k))})}catch(e){}};
+try{Object.keys(window.localStorage).filter(k=>k.indexOf('sb-')==0).forEach(k=>window.localStorage.removeItem(k))}catch(e){}
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storage:ST,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=s=>document.querySelector(s),app=$('#app');
 const REG=['CENTRAL','EAST','NORTH','SOUTH','WEST'],MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 let me=null,cm='',rf='',pend=null;
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cr=n=>{n=+n||0;return n>=1e7?'₹'+(n/1e7).toFixed(2)+' Cr':n>=1e5?'₹'+(n/1e5).toFixed(2)+' L':'₹'+Math.round(n).toLocaleString('en-IN')};
 const mon=d=>MN[+d.slice(5,7)-1]+'-'+d.slice(2,4);
 const pm=d=>{let i=+d.slice(5,7)+2,y=+d.slice(0,4)+Math.floor(i/12);i%=12;return y+'-'+String(i+1).padStart(2,'0')+'-01'};
@@ -63,13 +72,13 @@ function login(msg){app.innerHTML=`<div class=lg><div class=card><img src=logo.p
 <button class=g onclick="go()"><svg width=21 height=21 viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Sign in with Google</button>${msg?`<div class=err>${msg}</div>`:''}
 <footer><b>NM Business Solutions • Secondary Sales Insights Suite 2026</b><br>Authorized personnel only. Access is limited to approved accounts.</footer></div></div>`}
 const go=sw=>sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname,queryParams:sw?{prompt:'select_account'}:{}}});
-const out=()=>sb.auth.signOut().then(()=>location.reload());
+const out=async()=>{const b=document.querySelector('.u button');if(b){b.disabled=true;b.textContent='Signing out…'}try{await Promise.race([sb.auth.signOut(),new Promise(r=>setTimeout(r,4000))])}catch(e){}wipe();location.replace(location.origin+location.pathname)};
 async function boot(){
 const{data:{session}}=await sb.auth.getSession();
 if(!session)return login();
 const email=session.user.email.toLowerCase();
 const{data:p}=await sb.from('profiles').select('*').eq('email',email).eq('active',true).maybeSingle();
-if(!p){await sb.auth.signOut();return login('Access not authorized. Ask your admin to approve '+esc(email)+'.')}
+if(!p){try{await sb.auth.signOut()}catch(e){}wipe();return login('Access not authorized. Ask your admin to approve '+esc(email)+'.')}
 me=p;const ad=p.role=='admin';
 app.innerHTML=`<header><img src=logo.png width=40 height=40 alt=""><b>NMBS</b><span>SECONDARY SALES<br>INSIGHTS</span>
 <nav><button id=t-dash onclick="show('dash')">Dashboard</button>${FULL.includes(p.role)?`<button id=t-lead onclick="show('lead')">Leaderboard</button>`:''}${ad||(p.can_upload&&p.role!='depot')?`<button id=t-upl onclick="show('upl')">Upload data</button>`:''}${ad?`<button id=t-admn onclick="show('admn')">Admin controls</button>`:''}</nav>
@@ -203,7 +212,7 @@ let dp=String(r.DEPOT||'').trim().toUpperCase().replace(/\s+/g,' ');if(dp=='PORT
 if(!ok.has(dp)){bad[dp||'(blank)']=(bad[dp||'(blank)']||0)+1;continue}
 const d=r.MNTH instanceof Date?r.MNTH:new Date(r.MNTH);if(isNaN(d)){bad['Invalid month']=(bad['Invalid month']||0)+1;continue}
 const m=new Date(d.getTime()+432e5).toISOString().slice(0,7)+'-01',key=m+r.INDEX+dp;if(seen.has(key)){dup++;continue}seen.add(key);
-const o={mnth:m,depot:dp};for(const[k,h]of Object.entries(C))o[k]=TX.includes(k)?String(r[h]??''):(+r[h]||0);
+const o={mnth:m,depot:dp};for(const[k,h]of Object.entries(C))o[k]=TX.includes(k)?String(r[h]==null?'':r[h]):(+r[h]||0);
 (by[m]=by[m]||[]).push(o)}
 const bk=Object.keys(bad);
 if(bk.length||dup)return pv.innerHTML=`<div class=err><b>Upload blocked.</b><br>${bk.map(k=>`${esc(k)}: ${bad[k]} rows`).join('<br>')}${bk.length?'<br>Unknown depots must be added to the depot-region mapping first.':''}${dup?`<br>${dup} duplicate rows (same month, item and depot).`:''}</div>`;
