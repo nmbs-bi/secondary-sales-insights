@@ -90,7 +90,7 @@ app.innerHTML=`<header><img src=logo.png width=40 height=40 alt=""><b>NMBS</b><s
 <nav><button id=t-dash onclick="show('dash')">Dashboard</button>${FULL.includes(p.role)?`<button id=t-lead onclick="show('lead')">Leaderboard</button>`:''}${ad||(p.can_upload&&p.role!='depot')?`<button id=t-upl onclick="show('upl')">Upload data</button>`:''}${ad?`<button id=t-admn onclick="show('admn')">Admin controls</button>`:''}</nav>
 <div class=u>${esc(email)}<i>${esc(ROLE[p.role])}</i><button onclick="out()">Logout</button></div></header><main id=v></main>`;
 watch();show(p.role=='director'?'lead':'dash')}
-function show(t){if(t=='dash'||t=='lead'){cm='';rf='';df=''}document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));({dash,lead,upl,admn})[t]()}
+function show(t){if(t=='dash'||t=='lead'){cm='';rf='';df=''}document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));VIEW++;({dash:()=>dash(true),lead:()=>lead(true),upl,admn})[t]()}
 const hh=()=>{const h=document.querySelector('header');if(h)document.documentElement.style.setProperty('--hh',h.offsetHeight+'px')};window.addEventListener('resize',hh);
 const nm=n=>{n=+n||0;return n>=1e7?(n/1e7).toFixed(2)+' Cr':n>=1e5?(n/1e5).toFixed(2)+' L':Math.round(n).toLocaleString('en-IN')},sh=nm;
 const VL={id:'vl',afterDatasetsDraw(ch){const ty=ch.config.type,hz=ch.options.indexAxis=='y',x=ch.ctx,ds=ch.data.datasets[0],tot=ds.data.reduce((s,q)=>s+ +q,0)||1;x.save();x.font='600 11px "Segoe UI",sans-serif';
@@ -107,25 +107,35 @@ const dlt=(c,q,l)=>{q=+q;if(!q)return'';const p=(c/q-1)*100;return`<span class=d
 const mkc=(id,cfg)=>CH.push(new Chart(document.getElementById(id),{plugins:[VL],...cfg}));
 const TIP={callbacks:{label:c=>' '+fmt(c.raw)}};
 const pick=(k,x)=>{if(k=='dm')dm=x;if(k=='un')un=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;dash()};
-async function dash(){
+let VIEW=0;const CACHE={};
+const bust=()=>{Object.keys(CACHE).forEach(k=>delete CACHE[k])};
+const ck=(n,a)=>n+JSON.stringify(a||{});
+const rc=(n,a)=>{const k=ck(n,a);if(!CACHE[k]){const e={};e.p=sb.rpc(n,a).then(r=>{if(r.error)delete CACHE[k];else e.d=r;return r});CACHE[k]=e}return CACHE[k]};
+async function batches(fresh){if(CACHE.batches&&!fresh)return CACHE.batches;const{data:b}=await sb.from('upload_batches').select('mnth');const ms=[...new Set((b||[]).map(x=>x.mnth))].sort().reverse();const sig=ms.join();if(CACHE.sig!==sig){bust();CACHE.sig=sig}CACHE.batches=ms;return ms}
+async function sizes(){if(CACHE.sizes)return CACHE.sizes;const r=await sb.from('master_depot_regions').select('depot,depot_size'),m={};(r.data||[]).forEach(x=>m[x.depot]=x.depot_size);CACHE.sizes=m;return m}
+async function dash(fresh){
  CH.forEach(c=>c.destroy());CH=[];
- const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
- const{data:b}=await sb.from('upload_batches').select('mnth');
- const ms=[...new Set((b||[]).map(x=>x.mnth))].sort().reverse();
+ const my=++VIEW,v=$('#v');if(!CACHE.batches||fresh)v.innerHTML='<p class=mu>Loading…</p>';
+ const ms=await batches(fresh);
  if(!ms.length)return v.innerHTML=`<div class=em>No data yet. ${me.role=='admin'?'Open Upload data to add the first monthly file.':'Your admin will upload the first monthly file.'}</div>`;
  const fys=[...new Set(ms.map(fyOf))].sort((x,y)=>y-x),fm=y=>ms.filter(m=>fyOf(m)==y).sort();
  if(/^FY\d+$/.test(cm)){if(!fys.includes(+cm.slice(2)))cm=ms[0]}else if(!ms.includes(cm))cm=ms[0];
  const FYm=/^FY\d+$/.test(cm),fy=FYm?+cm.slice(2):0,fmn=FYm?fm(fy):[cm],from=fmn[0],to=fmn[fmn.length-1];
  const fyL=y=>{const q=fm(y);return fyN(y)+' ('+MN[+q[0].slice(5,7)-1]+'–'+MN[+q[q.length-1].slice(5,7)-1]+')'};
- const pf=FYm&&ms.includes(pyr(from))&&ms.includes(pyr(to))?sb.rpc('dash_by_depot',{p_from:pyr(from),p_to:pyr(to)}):null;
- const[a,t,pr]=await Promise.all([sb.rpc('dash_by_depot',{p_from:from,p_to:to}),sb.rpc('dash_trend'),pf]);
- if(a.error||t.error)return v.innerHTML=`<div class=err>${esc((a.error||t.error).message)}</div>`;
+ const ePf=FYm&&ms.includes(pyr(from))&&ms.includes(pyr(to))?rc('dash_by_depot',{p_from:pyr(from),p_to:pyr(to)}):null;
+ const eA=rc('dash_by_depot',{p_from:from,p_to:to}),eT=rc('dash_trend');
+ if(!eA.d)v.innerHTML='<p class=mu>Loading…</p>';
+ const[a,pr]=await Promise.all([eA.p,ePf?ePf.p:null]);
+ if(my!==VIEW)return;
+ const t=eT.d||null;
+ if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
+ if(!t)eT.p.then(r=>{if(my!==VIEW)return;if(r.error){const el=$('#c3box');if(el)el.innerHTML='<div class=err>'+esc(r.error.message)+'</div>'}else dash()});
  if(a.data.length&&!('sold_u' in a.data[0]))return v.innerHTML='<div class=err>The database update (schema_update2.sql) has not been run yet.</div>';
  const all=a.data,rg=[...new Set(all.map(r=>r.region))].sort();
  if(rf&&!rg.includes(rf))rf='';
  const d0=rf?all.filter(r=>r.region==rf):all;
  if(df&&!d0.some(r=>r.depot==df))df='';
- const d=df?d0.filter(r=>r.depot==df):d0,S=k=>d.reduce((s,r)=>s+ +r[k],0),tr=t.data||[];
+ const d=df?d0.filter(r=>r.depot==df):d0,S=k=>d.reduce((s,r)=>s+ +r[k],0),tr=t&&t.data?t.data:[],trOK=!!(t&&t.data);
  const prr=pr&&!pr.error?pr.data.filter(r=>(!rf||r.region==rf)&&(!df||r.depot==df)):null;
  const ti=FYm?-1:tr.findIndex(r=>r.mnth==cm),pv=ti>0?tr[ti-1]:null,py=FYm?null:tr.find(r=>r.mnth==pyr(cm));
  const dl=k=>{const c=S(key(k));if(FYm)return prr?dlt(c,prr.reduce((s,r)=>s+ +r[key(k)],0),'last year'):'';if(rf||df)return'';return(pv?dlt(c,pv[key(k)],mon(pv.mnth)):'')+(py?dlt(c,py[key(k)],mon(py.mnth)):'')};
@@ -140,7 +150,7 @@ async function dash(){
  <div class=gr>
  <section><h3>${NMX(dm)} by region · ${pl}</h3><div class=cv><canvas id=c1></canvas></div></section>
  <section><h3>Sales vs denied vs debit notes${un=='val'?'':' ('+U+')'} · ${sub}</h3><div class=cv><canvas id=c2></canvas></div></section>
- <section><h3>${NMX(dm)} by month (all regions)</h3><div class=cv><canvas id=c3></canvas></div></section>
+ <section><h3>${NMX(dm)} by month (all regions)</h3><div class=cv id=c3box>${trOK?'<canvas id=c3></canvas>':'<p class=mu style="padding:16px">Loading monthly trend…</p>'}</div></section>
  <section><h3>Top 10 depots · ${NMX(dm)} · ${pl}</h3><div class=cv><canvas id=c4></canvas></div></section></div>
  <section><h3>Depots in ${sub}${un=='val'?'':' ('+U+')'}</h3><div class=sc><table><tr><th>Depot<th>Region<th>Sales<th>Closing stock<th>Denied<th>Debit notes<th>PD for ${mon(pm(to))}</tr>
  ${d.map(r=>`<tr><td>${esc(r.depot)}<td>${r.region}<td><div class=bar><i style="width:${+r[key('sold')]/mx*100}%"></i></div>${fmt(r[key('sold')])}<td>${fmt(r[key('stock')])}<td>${fmt(r[key('denied')])}<td>${fmt(r[key('other')])}<td>${fmt(r[key('pro')])}</tr>`).join('')}</table></div></section>`;
@@ -151,33 +161,37 @@ async function dash(){
  const rn=Object.keys(R).sort();
  mkc('c1',{type:'doughnut',data:{labels:rn.map(x=>x+' · '+fmt(R[x])),datasets:[{data:rn.map(x=>R[x]),backgroundColor:rn.map(x=>!rf||rf==x?RC[x]:RC[x]+'44'),borderWidth:2}]},options:{maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right'},tooltip:TIP},onClick:(e,el)=>{if(el.length)pick('rf',rn[el[0].index])}}});
  mkc('c2',{type:'doughnut',data:{labels:['Sales · '+fmt(S(key('sold'))),'Denied · '+fmt(S(key('denied'))),'Debit notes · '+fmt(S(key('other')))],datasets:[{data:[S(key('sold')),S(key('denied')),S(key('other'))],backgroundColor:['#0e1a3a','#b5483a','#c8a24a'],borderWidth:2}]},options:{maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right'},tooltip:TIP}}});
- mkc('c3',{type:'bar',data:{labels:tr.map(r=>mon(r.mnth)),datasets:[{data:tr.map(r=>+r[key(dm)]),backgroundColor:tr.map(r=>(FYm?fyOf(r.mnth)==fy:r.mnth==cm)?'#0e1a3a':'#c9d2e6'),borderRadius:5}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{y:{grace:'12%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}},onClick:(e,el)=>{if(el.length)pick('cm',tr[el[0].index].mnth)}}});
+ if(trOK)mkc('c3',{type:'bar',data:{labels:tr.map(r=>mon(r.mnth)),datasets:[{data:tr.map(r=>+r[key(dm)]),backgroundColor:tr.map(r=>(FYm?fyOf(r.mnth)==fy:r.mnth==cm)?'#0e1a3a':'#c9d2e6'),borderRadius:5}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{y:{grace:'12%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}},onClick:(e,el)=>{if(el.length)pick('cm',tr[el[0].index].mnth)}}});
  const tp=[...d0].sort((x,y)=>y[key(dm)]-x[key(dm)]).slice(0,10);
  mkc('c4',{type:'bar',data:{labels:tp.map(r=>r.depot),datasets:[{data:tp.map(r=>+r[key(dm)]),backgroundColor:tp.map(r=>!df||df==r.depot?(RC[r.region]||'#0e1a3a'):'#d5dbea'),borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}},onClick:(e,el)=>{if(el.length)pick('df',tp[el[0].index].depot)}}});
 }
 const SZ=['S','M','L','XL'],MS=['sold','pro','stock','denied','other'];
 let lm='sold',showAll=false;
 const LK=(k,x)=>{if(k=='lm')lm=x;if(k=='un')un=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;if(k=='all')showAll=!showAll;lead()};
-async function lead(){
+async function lead(fresh){
  CH.forEach(c=>c.destroy());CH=[];
- const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
- const{data:b}=await sb.from('upload_batches').select('mnth'),ms=[...new Set((b||[]).map(x=>x.mnth))].sort().reverse();
+ const my=++VIEW,v=$('#v');if(!CACHE.batches||fresh)v.innerHTML='<p class=mu>Loading…</p>';
+ const ms=await batches(fresh);
  if(!ms.length)return v.innerHTML='<div class=em>No data yet.</div>';
  const fys=[...new Set(ms.map(fyOf))].sort((x,y)=>y-x),fm=y=>ms.filter(m=>fyOf(m)==y).sort();
  if(/^FY\d+$/.test(cm)){if(!fys.includes(+cm.slice(2)))cm=ms[0]}else if(!ms.includes(cm))cm=ms[0];
  const FYm=/^FY\d+$/.test(cm),fy=FYm?+cm.slice(2):0,fmn=FYm?fm(fy):[cm],from=fmn[0],to=fmn[fmn.length-1],nmo=fmn.length;
  const fyL=y=>{const q=fm(y);return fyN(y)+' ('+MN[+q[0].slice(5,7)-1]+'–'+MN[+q[q.length-1].slice(5,7)-1]+')'};
- const[a,ds,pp]=await Promise.all([sb.rpc('dash_by_depot',{p_from:from,p_to:to}),sb.from('master_depot_regions').select('depot,depot_size'),sb.rpc('dash_by_product',{p_from:from,p_to:to,p_region:rf||null,p_depot:df||null})]);
+ const eA=rc('dash_by_depot',{p_from:from,p_to:to}),eP=rc('dash_by_product',{p_from:from,p_to:to,p_region:rf||null,p_depot:df||null});
+ if(!eA.d)v.innerHTML='<p class=mu>Loading…</p>';
+ const[a,sz]=await Promise.all([eA.p,sizes()]);
+ if(my!==VIEW)return;
+ const pp=eP.d||null;
+ if(!pp)eP.p.then(r=>{if(my!==VIEW)return;if(r.error){const el=$('#pbox');if(el)el.innerHTML='<div class=err>'+esc(r.error.message)+'</div>'}else lead()});
  if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
  if(a.data.length&&!('sold_u' in a.data[0]))return v.innerHTML='<div class=err>The database update (schema_update2.sql) has not been run yet.</div>';
- const sz={};(ds.data||[]).forEach(x=>sz[x.depot]=x.depot_size);
- const all=a.data,K=key(lm),isF=lm=='sold'||lm=='denied'||lm=='other',apm=FYm&&isF&&nmo>1,U=UL[un];
+  const all=a.data,K=key(lm),isF=lm=='sold'||lm=='denied'||lm=='other',apm=FYm&&isF&&nmo>1,U=UL[un];
  const Rg={};all.forEach(r=>Rg[r.region]=(Rg[r.region]||0)+ +r[K]);
  const rr=Object.entries(Rg).sort((x,y)=>y[1]-x[1]),rt=rr.reduce((s,x)=>s+x[1],0)||1,rm=rr[0]?rr[0][1]||1:1;
  if(rf&&!(rf in Rg))rf='';
  const d0=(rf?all.filter(r=>r.region==rf):all).slice().sort((x,y)=>y[K]-x[K]),dt=d0.reduce((s,r)=>s+ +r[K],0)||1,dmx=d0[0]?+d0[0][K]||1:1;
  if(df&&!d0.some(r=>r.depot==df))df='';
- const prs=pp.error?[]:[...pp.data].sort((x,y)=>y[K]-x[K]),pt=prs.reduce((s,r)=>s+ +r[K],0)||1,pmx=prs[0]?+prs[0][K]||1:1,shown=showAll?prs:prs.slice(0,25);
+ const prs=pp&&!pp.error?[...pp.data].sort((x,y)=>y[K]-x[K]):[],pt=prs.reduce((s,r)=>s+ +r[K],0)||1,pmx=prs[0]?+prs[0][K]||1:1,shown=showAll?prs:prs.slice(0,25);
  const pl=FYm?((lm=='stock'||lm=='pro')?'as at '+mon(to):fyN(fy)):mon(cm),pc=x=>(x/rt*100).toFixed(1)+'%',sc=rf?' · '+rf:'',sd=df?' · '+esc(df):'';
  const fl=[rf?`<button class=chip onclick="LK('rf','${rf}')">Region: ${rf} ✕</button>`:'',df?`<button class=chip onclick="LK('df','${esc(df)}')">Depot: ${esc(df)} ✕</button>`:''].join('');
  v.innerHTML=`<div class=stk><div class=bar0><select onchange="LK('cm',this.value)"><optgroup label="Financial year">${fys.map(y=>`<option value=FY${y} ${cm=='FY'+y?'selected':''}>${fyL(y)}</option>`).join('')}</optgroup><optgroup label="Months">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</optgroup></select>
@@ -188,10 +202,10 @@ async function lead(){
  <section><h3>${NMX(lm)} · share by region · ${pl}</h3><div class=cv><canvas id=l1></canvas></div></section>
  <section><h3>Region ranking · ${pl}</h3><div class=cv><canvas id=l2></canvas></div></section>
  <section><h3>Top 10 depots${sc} · ${pl}</h3><div class=cv><canvas id=l3></canvas></div></section>
- <section><h3>Top 10 products${sc}${sd} · ${pl}</h3><div class=cv><canvas id=l4></canvas></div></section></div>
+ <section><h3>Top 10 products${sc}${sd} · ${pl}</h3><div class=cv>${pp?'<canvas id=l4></canvas>':'<p class=mu style="padding:16px">Loading products…</p>'}</div></section></div>
  <section><h3>Regions</h3><div class=sc><table><tr><th>Rank<th>Region<th>${NMX(lm)}<th>Share${apm?'<th>APM':''}</tr>${rr.map(([n,x],i)=>`<tr class="cl ${rf==n?'hl':''}" onclick="LK('rf','${n}')"><td>${i+1}<td>${n}<td><div class=bar><i style="width:${x/rm*100}%"></i></div>${fmt(x)}<td>${pc(x)}${apm?'<td>'+fmt(x/nmo):''}</tr>`).join('')}</table></div></section>
  <section><h3>Depots${sc}</h3><div class=sc><table><tr><th>Rank<th>Depot<th>Region<th>Size<th>${NMX(lm)}<th>Share${apm?'<th>APM':''}</tr>${d0.map((r,i)=>`<tr class="cl ${df==r.depot?'hl':''}" onclick="LK('df','${esc(r.depot)}')"><td>${i+1}<td>${esc(r.depot)}<td>${r.region}<td>${sz[r.depot]||'—'}<td><div class=bar><i style="width:${+r[K]/dmx*100}%"></i></div>${fmt(r[K])}<td>${(+r[K]/dt*100).toFixed(1)}%${apm?'<td>'+fmt(+r[K]/nmo):''}</tr>`).join('')}</table></div></section>
- <section><h3>Products${sc}${sd} · ${pl}</h3>${pp.error?`<div class=err>${esc(pp.error.message)}</div>`:`<div class=sc><table><tr><th>Rank<th>SKU<th>Product<th>Supplier<th>${NMX(lm)}<th>Share</tr>${shown.map((r,i)=>`<tr><td>${i+1}<td>${r.item_index}<td>${esc(r.nomenclature)}<td>${esc(r.supname)}<td><div class=bar><i style="width:${+r[K]/pmx*100}%"></i></div>${fmt(r[K])}<td>${(+r[K]/pt*100).toFixed(1)}%</tr>`).join('')}</table></div>${prs.length>25?`<p><button class=sm onclick="LK('all')">${showAll?'Show top 25 only':'Show all '+prs.length+' products'}</button></p>`:''}`}</section>`;
+ <section><h3>Products${sc}${sd} · ${pl}</h3>${!pp?'<div id=pbox><p class=mu>Loading products…</p></div>':pp.error?`<div class=err>${esc(pp.error.message)}</div>`:`<div class=sc><table><tr><th>Rank<th>SKU<th>Product<th>Supplier<th>${NMX(lm)}<th>Share</tr>${shown.map((r,i)=>`<tr><td>${i+1}<td>${r.item_index}<td>${esc(r.nomenclature)}<td>${esc(r.supname)}<td><div class=bar><i style="width:${+r[K]/pmx*100}%"></i></div>${fmt(r[K])}<td>${(+r[K]/pt*100).toFixed(1)}%</tr>`).join('')}</table></div>${prs.length>25?`<p><button class=sm onclick="LK('all')">${showAll?'Show top 25 only':'Show all '+prs.length+' products'}</button></p>`:''}`}</section>`;
  hh();
  if(typeof Chart=='undefined')return;
  Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
@@ -201,7 +215,7 @@ async function lead(){
  const t10=d0.slice(0,10);
  mkc('l3',{type:'bar',data:{labels:t10.map(r=>r.depot),datasets:[{data:t10.map(r=>+r[K]),backgroundColor:t10.map(r=>!df||df==r.depot?(RC[r.region]||'#0e1a3a'):'#d5dbea'),borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}},onClick:(e,el)=>{if(el.length)LK('df',t10[el[0].index].depot)}}});
  const p10=prs.slice(0,10);
- mkc('l4',{type:'bar',data:{labels:p10.map(r=>String(r.nomenclature||'').slice(0,26)),datasets:[{data:p10.map(r=>+r[K]),backgroundColor:'#c8a24a',borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>{const r=p10[c[0].dataIndex];return r?r.nomenclature+' (SKU '+r.item_index+')':''},label:TIP.callbacks.label}}},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}}}});
+ if(pp)mkc('l4',{type:'bar',data:{labels:p10.map(r=>String(r.nomenclature||'').slice(0,26)),datasets:[{data:p10.map(r=>+r[K]),backgroundColor:'#c8a24a',borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>{const r=p10[c[0].dataIndex];return r?r.nomenclature+' (SKU '+r.item_index+')':''},label:TIP.callbacks.label}}},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}}}});
 }
 const H='MNTH GPCD INDEX NOMENCLATURE PACK ITYPE GENCD GENNAME SUPNAME DEPOT WSRATEPERUNIT SOLDCS SOLDUN OTHISSCS OTHISSUN STOCKCS STOCKUN DENIEDCS DENIEDUN PRO_CASES PRO_UNITS'.split(' ');
 const C={gpcd:'GPCD',item_index:'INDEX',nomenclature:'NOMENCLATURE',pack:'PACK',itype:'ITYPE',gencd:'GENCD',genname:'GENNAME',supname:'SUPNAME',wsrateperunit:'WSRATEPERUNIT',soldcs:'SOLDCS',soldun:'SOLDUN',othisscs:'OTHISSCS',othissun:'OTHISSUN',stockcs:'STOCKCS',stockun:'STOCKUN',deniedcs:'DENIEDCS',deniedun:'DENIEDUN',pro_cases:'PRO_CASES',pro_units:'PRO_UNITS'},TX=['nomenclature','itype','genname','supname'];
@@ -233,7 +247,7 @@ const st=$('#st'),f=m=>st.innerHTML=m,bad=e=>{f(`<div class=err>Upload stopped. 
 for(const m of Object.keys(pend.by).sort()){
 const rs=pend.by[m];f(`Uploading ${mon(m)} (${rs.length.toLocaleString('en-IN')} rows)…`);
 const r=await sb.rpc('upload_month',{p_mnth:m,p_filename:pend.name,p_rows:rs});if(r.error)return bad(r.error)}
-f('<div class=ok>Upload complete. The dashboard now shows the new data.</div>');pend=null}
+bust();f('<div class=ok>Upload complete. The dashboard now shows the new data.</div>');pend=null}
 async function admn(){
 const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
 let[p,b,dp]=await Promise.all([sb.from('profiles').select('*').order('email'),sb.from('upload_batches').select('*').order('mnth',{ascending:false}),sb.from('master_depot_regions').select('depot,region,depot_size').order('depot')]);if(dp.error)dp=await sb.from('master_depot_regions').select('depot,region').order('depot');
@@ -252,10 +266,10 @@ async function upd(e,k,x){const u={[k]:x};if(k=='role'){u.region=null;u.depots=[
 async function rm(e){if(!confirm('Remove '+e+'? They will lose access.'))return;const{error}=await sb.from('profiles').delete().eq('email',e);if(error)alert(error.message);admn()}
 async function addd(){const d=$('#xd').value.trim().toUpperCase().replace(/\s+/g,' '),r=$('#xr').value,pe=$('#de');
 if(!/^[A-Z0-9][A-Z0-9 .-]*$/.test(d))return pe.innerHTML='<div class=err>Use only letters, numbers, spaces, dots or hyphens in the depot name.</div>';
-const{error}=await sb.from('master_depot_regions').insert({depot:d,region:r,depot_size:$('#xz').value||null});if(error)return pe.innerHTML=`<div class=err>${esc(error.message)}</div>`;admn()}
-async function setr(d,r){let x=await sb.from('master_depot_regions').update({region:r}).eq('depot',d);if(!x.error)x=await sb.from('depot_monthly_operations').update({region:r}).eq('depot',d);if(x.error)alert(x.error.message);admn()}
-async function setz(d,z){const{error}=await sb.from('master_depot_regions').update({depot_size:z||null}).eq('depot',d);if(error)alert(error.message);admn()}
-async function rmd(d){if(!confirm('Remove depot '+d+'? This only works if it has no uploaded data.'))return;const{error}=await sb.from('master_depot_regions').delete().eq('depot',d);if(error)alert(error.message);admn()}
-async function delb(id,m){if(!confirm('Delete all data for '+m+'?'))return;const{error}=await sb.from('upload_batches').delete().eq('id',id);if(error)alert(error.message);admn()}
+const{error}=await sb.from('master_depot_regions').insert({depot:d,region:r,depot_size:$('#xz').value||null});if(error)return pe.innerHTML=`<div class=err>${esc(error.message)}</div>`;bust();admn()}
+async function setr(d,r){let x=await sb.from('master_depot_regions').update({region:r}).eq('depot',d);if(!x.error)x=await sb.from('depot_monthly_operations').update({region:r}).eq('depot',d);if(x.error)alert(x.error.message);bust();admn()}
+async function setz(d,z){const{error}=await sb.from('master_depot_regions').update({depot_size:z||null}).eq('depot',d);if(error)alert(error.message);bust();admn()}
+async function rmd(d){if(!confirm('Remove depot '+d+'? This only works if it has no uploaded data.'))return;const{error}=await sb.from('master_depot_regions').delete().eq('depot',d);if(error)alert(error.message);bust();admn()}
+async function delb(id,m){if(!confirm('Delete all data for '+m+'?'))return;const{error}=await sb.from('upload_batches').delete().eq('id',id);if(error)alert(error.message);bust();admn()}
 boot();
 </script></body></html>
