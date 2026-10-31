@@ -65,9 +65,10 @@ const mon=d=>MN[+d.slice(5,7)-1]+'-'+d.slice(2,4);
 const pm=d=>{let i=+d.slice(5,7)+2,y=+d.slice(0,4)+Math.floor(i/12);i%=12;return y+'-'+String(i+1).padStart(2,'0')+'-01'};
 const opts=(a,s)=>a.map(x=>`<option ${x==s?'selected':''}>${x}</option>`).join('');
 const ROLE={admin:'Admin',national:'National head',director:'Director',regional:'Regional head',depot:'Depot team'},FULL=['admin','national','director'];
+const LB=p=>p.role=='admin'||(p.can_leaderboard===undefined?FULL.includes(p.role):!!p.can_leaderboard);
 const ropts=s=>Object.entries(ROLE).map(([k,n])=>`<option value=${k} ${k==s?'selected':''}>${n}</option>`).join('');
 const scope=p=>FULL.includes(p.role)?'All depots':p.role=='regional'?(p.region||'No region')+' region':(p.depots||[]).join(', ')||'No depots';
-const fv=()=>{const r=$('#nr').value;$('#ng').hidden=r!='regional';$('#nd').hidden=r!='depot';$('#nul').hidden=r=='depot'};
+const fv=()=>{const r=$('#nr').value;$('#ng').hidden=r!='regional';$('#nd').hidden=r!='depot';$('#nul').hidden=r=='depot';$('#nl').checked=r=='national'||r=='director'};
 function login(msg){app.innerHTML=`<div class=lg><div class=card><img src=logo.png width=190 height=190 alt="NM Business Solutions"><h1>Secondary Sales Insights</h1><p>Depot-wise Sales, Stock &amp; Provisional Demand Analytics</p>
 <button class=g onclick="go()"><svg width=21 height=21 viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Sign in with Google</button>${msg?`<div class=err>${msg}</div>`:''}
 <footer><b>NM Business Solutions • Secondary Sales Insights Suite 2026</b><br>Authorized personnel only. Access is limited to approved accounts.</footer></div></div>`}
@@ -87,17 +88,17 @@ const{data:p}=await sb.from('profiles').select('*').eq('email',email).eq('active
 if(!p){try{await sb.auth.signOut()}catch(e){}wipe();return login('Access not authorized. Ask your admin to approve '+esc(email)+'.')}
 me=p;const ad=p.role=='admin';
 app.innerHTML=`<header><img src=logo.png width=40 height=40 alt=""><b>NMBS</b><span>SECONDARY SALES<br>INSIGHTS</span>
-<nav><button id=t-dash onclick="show('dash')">Dashboard</button>${FULL.includes(p.role)?`<button id=t-lead onclick="show('lead')">Leaderboard</button>`:''}${ad||(p.can_upload&&p.role!='depot')?`<button id=t-upl onclick="show('upl')">Upload data</button>`:''}${ad?`<button id=t-admn onclick="show('admn')">Admin controls</button>`:''}</nav>
+<nav><button id=t-dash onclick="show('dash')">Dashboard</button>${LB(p)?`<button id=t-lead onclick="show('lead')">Leaderboard</button>`:''}${ad||(p.can_upload&&p.role!='depot')?`<button id=t-upl onclick="show('upl')">Upload data</button>`:''}${ad?`<button id=t-admn onclick="show('admn')">Admin controls</button>`:''}</nav>
 <div class=u>${esc(email)}<i>${esc(ROLE[p.role])}</i><button onclick="out()">Logout</button></div></header><main id=v></main>`;
-watch();show(p.role=='director'?'lead':'dash')}
-function show(t){if(t=='dash'||t=='lead'){cm='';rf='';df=''}document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));VIEW++;({dash:()=>dash(true),lead:()=>lead(true),upl,admn})[t]()}
+watch();show(p.role=='director'&&LB(p)?'lead':'dash')}
+function show(t){if(t=='dash'||t=='lead'){cm='';rf='';df='';sf='';showAll=false}document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));VIEW++;({dash:()=>dash(true),lead:()=>lead(true),upl,admn})[t]()}
 const hh=()=>{const h=document.querySelector('header');if(h)document.documentElement.style.setProperty('--hh',h.offsetHeight+'px')};window.addEventListener('resize',hh);
 const nm=n=>{n=+n||0;return n>=1e7?(n/1e7).toFixed(2)+' Cr':n>=1e5?(n/1e5).toFixed(2)+' L':Math.round(n).toLocaleString('en-IN')},sh=nm;
 const VL={id:'vl',afterDatasetsDraw(ch){const ty=ch.config.type,hz=ch.options.indexAxis=='y',x=ch.ctx,ds=ch.data.datasets[0],tot=ds.data.reduce((s,q)=>s+ +q,0)||1;x.save();x.font='600 11px "Segoe UI",sans-serif';
  ch.getDatasetMeta(0).data.forEach((el,i)=>{const q=+ds.data[i];if(!q)return;
  if(ty=='bar'){x.fillStyle='#1a2238';if(hz){x.textAlign='left';x.textBaseline='middle';x.fillText(sh(q),el.x+6,el.y)}else{x.textAlign='center';x.textBaseline='bottom';x.fillText(sh(q),el.x,el.y-4)}}
  else if(q/tot>.06){const p=el.tooltipPosition(),bg=String(ds.backgroundColor[i]),c=bg.slice(1,7),l=.299*parseInt(c.slice(0,2),16)+.587*parseInt(c.slice(2,4),16)+.114*parseInt(c.slice(4,6),16);x.fillStyle=(bg.length>7||l>140)?'#1a2238':'#fff';x.textAlign='center';x.textBaseline='middle';x.fillText(sh(q),p.x,p.y)}});x.restore()}};
-let dm='sold',un='val',df='',CH=[];
+let dm='sold',un='val',df='',sf='',CH=[];
 const BN={sold:'Sales',stock:'Closing stock',denied:'Denied',other:'Debit notes',pro:'Provisional demand (PD)'},VN={sold:'Sales value',stock:'Closing stock value',denied:'Denied value',other:'Debit notes',pro:'Provisional demand (PD)'},UT={val:'Value (₹)',u:'Units (Nos)',c:'Cases'},UL={val:'₹',u:'Nos',c:'Cases'};
 const NMX=b=>un=='val'?VN[b]:BN[b]+' ('+UL[un]+')';
 const fyOf=m=>{const y=+m.slice(0,4);return +m.slice(5,7)>=4?y:y-1},fyN=y=>'FY '+y+'-'+String(y+1).slice(2),pyr=m=>(+m.slice(0,4)-1)+m.slice(4);
@@ -106,7 +107,7 @@ const key=b=>un=='val'?b+'val':b+'_'+un,fmt=n=>un=='val'?cr(n):nm(n);
 const dlt=(c,q,l)=>{q=+q;if(!q)return'';const p=(c/q-1)*100;return`<span class=dl>${p>=0?'▲':'▼'} ${Math.abs(p).toFixed(1)}% vs ${l}</span>`};
 const mkc=(id,cfg)=>CH.push(new Chart(document.getElementById(id),{plugins:[VL],...cfg}));
 const TIP={callbacks:{label:c=>' '+fmt(c.raw)}};
-const pick=(k,x)=>{if(k=='dm')dm=x;if(k=='un')un=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;dash()};
+const pick=(k,x)=>{if(k=='dm')dm=x;if(k=='un')un=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;if(k=='sf')sf=sf==x?'':x;if(k=='sf0')sf='';if(k=='all')showAll=!showAll;dash()};
 let VIEW=0;const CACHE={};
 const bust=()=>{Object.keys(CACHE).forEach(k=>delete CACHE[k])};
 const ck=(n,a)=>n+JSON.stringify(a||{});
@@ -123,13 +124,15 @@ async function dash(fresh){
  const FYm=/^FY\d+$/.test(cm),fy=FYm?+cm.slice(2):0,fmn=FYm?fm(fy):[cm],from=fmn[0],to=fmn[fmn.length-1];
  const fyL=y=>{const q=fm(y);return fyN(y)+' ('+MN[+q[0].slice(5,7)-1]+'–'+MN[+q[q.length-1].slice(5,7)-1]+')'};
  const ePf=FYm&&ms.includes(pyr(from))&&ms.includes(pyr(to))?rc('dash_by_depot',{p_from:pyr(from),p_to:pyr(to)}):null;
- const eA=rc('dash_by_depot',{p_from:from,p_to:to}),eT=rc('dash_trend');
+ const eA=rc('dash_by_depot',{p_from:from,p_to:to}),eT=rc('dash_trend'),eP=rc('dash_by_product',{p_from:from,p_to:to,p_region:rf||null,p_depot:df||null});
  if(!eA.d)v.innerHTML='<p class=mu>Loading…</p>';
  const[a,pr]=await Promise.all([eA.p,ePf?ePf.p:null]);
  if(my!==VIEW)return;
  const t=eT.d||null;
  if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
  if(!t)eT.p.then(r=>{if(my!==VIEW)return;if(r.error){const el=$('#c3box');if(el)el.innerHTML='<div class=err>'+esc(r.error.message)+'</div>'}else dash()});
+ const pq=eP.d||null;
+ if(!pq)eP.p.then(r=>{if(my!==VIEW)return;if(r.error){['pbox','pb5','pb6'].forEach(i=>{const el=$('#'+i);if(el)el.innerHTML='<div class=err>'+esc(r.error.message)+'</div>'})}else dash()});
  if(a.data.length&&!('sold_u' in a.data[0]))return v.innerHTML='<div class=err>The database update (schema_update2.sql) has not been run yet.</div>';
  const all=a.data,rg=[...new Set(all.map(r=>r.region))].sort();
  if(rf&&!rg.includes(rf))rf='';
@@ -141,7 +144,13 @@ async function dash(fresh){
  const dl=k=>{const c=S(key(k));if(FYm)return prr?dlt(c,prr.reduce((s,r)=>s+ +r[key(k)],0),'last year'):'';if(rf||df)return'';return(pv?dlt(c,pv[key(k)],mon(pv.mnth)):'')+(py?dlt(c,py[key(k)],mon(py.mnth)):'')};
  const K=[['sold',FYm?fyL(fy):'Sales in '+mon(cm)],['stock','Stock at end of '+mon(to)],['denied',FYm?fyL(fy):'Lost demand in '+mon(cm)],['other',FYm?fyL(fy):'Other issues in '+mon(cm)],['pro','PD for '+mon(pm(to))]];
  const mx=Math.max(1,...d.map(r=>+r[key('sold')])),U=UL[un],pl=FYm?((dm=='stock'||dm=='pro')?'as at '+mon(to):fyN(fy)):mon(cm),sub=FYm?fyN(fy):mon(cm);
- const fl=[rf?`<button class=chip onclick="pick('rf','${rf}')">Region: ${rf} ✕</button>`:'',df?`<button class=chip onclick="pick('df','${esc(df)}')">Depot: ${esc(df)} ✕</button>`:''].join('');
+ const fl=[rf?`<button class=chip onclick="pick('rf','${rf}')">Region: ${rf} ✕</button>`:'',df?`<button class=chip onclick="pick('df','${esc(df)}')">Depot: ${esc(df)} ✕</button>`:'',sf?`<button class=chip onclick="pick('sf0')">Supplier: ${esc(sf)} ✕</button>`:''].join('');
+ const pOK=!!(pq&&!pq.error),pall=pOK?pq.data:[],Kd=key(dm);
+ const spl={};pall.forEach(r=>{const n=r.supname||'(none)';spl[n]=(spl[n]||0)+(+r[Kd]||0)});
+ const sl2=Object.entries(spl).sort((x,y)=>y[1]-x[1]),s8=sl2.slice(0,8),soth=sl2.slice(8).reduce((s,x)=>s+x[1],0);
+ const sn=s8.map(x=>x[0]).concat(soth>0?['Others']:[]),sv=s8.map(x=>x[1]).concat(soth>0?[soth]:[]);
+ const ps=pall.filter(r=>!sf||(r.supname||'(none)')==sf).sort((x,y)=>(+y[Kd]||0)-(+x[Kd]||0)),pt=[...ps].sort((x,y)=>(+y[key('sold')]||0)-(+x[key('sold')]||0)),pmax=pt[0]?(+pt[0][key('sold')]||1):1,pshown=showAll?pt:pt.slice(0,25),p10=ps.slice(0,10);
+ const pmsg=pq?(pq.error?'<div class=err>'+esc(pq.error.message)+'</div>':''):'<p class=mu style="padding:16px">Loading products…</p>';
  v.innerHTML=`<div class=stk><div class=bar0><select onchange="pick('cm',this.value)"><optgroup label="Financial year">${fys.map(y=>`<option value=FY${y} ${cm=='FY'+y?'selected':''}>${fyL(y)}</option>`).join('')}</optgroup><optgroup label="Months">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</optgroup></select>
  <select onchange="pick('un',this.value)">${Object.entries(UT).map(([k,n])=>`<option value=${k} ${k==un?'selected':''}>${n}</option>`).join('')}</select>
  <span class=mu>${FULL.includes(me.role)?ROLE[me.role]+' view':esc(scope(me))}</span>${fl}<span class=mu style="margin-left:auto">Tip: click a chart slice or bar to filter</span></div>
@@ -152,8 +161,12 @@ async function dash(fresh){
  <section><h3>Sales vs denied vs debit notes${un=='val'?'':' ('+U+')'} · ${sub}</h3><div class=cv><canvas id=c2></canvas></div></section>
  <section><h3>${NMX(dm)} by month (all regions)</h3><div class=cv id=c3box>${trOK?'<canvas id=c3></canvas>':'<p class=mu style="padding:16px">Loading monthly trend…</p>'}</div></section>
  <section><h3>Top 10 depots · ${NMX(dm)} · ${pl}</h3><div class=cv><canvas id=c4></canvas></div></section></div>
+ <div class=gr>
+ <section><h3>Top 10 products${sf?' · '+esc(sf):''} · ${NMX(dm)} · ${pl}</h3><div class=cv id=pb5>${pOK?'<canvas id=c5></canvas>':pmsg}</div></section>
+ <section><h3>By supplier · ${NMX(dm)} · ${pl}</h3><div class=cv id=pb6>${pOK?'<canvas id=c6></canvas>':pmsg}</div></section></div>
  <section><h3>Depots in ${sub}${un=='val'?'':' ('+U+')'}</h3><div class=sc><table><tr><th>Depot<th>Region<th>Sales<th>Closing stock<th>Denied<th>Debit notes<th>PD for ${mon(pm(to))}</tr>
- ${d.map(r=>`<tr><td>${esc(r.depot)}<td>${r.region}<td><div class=bar><i style="width:${+r[key('sold')]/mx*100}%"></i></div>${fmt(r[key('sold')])}<td>${fmt(r[key('stock')])}<td>${fmt(r[key('denied')])}<td>${fmt(r[key('other')])}<td>${fmt(r[key('pro')])}</tr>`).join('')}</table></div></section>`;
+ ${d.map(r=>`<tr><td>${esc(r.depot)}<td>${r.region}<td><div class=bar><i style="width:${+r[key('sold')]/mx*100}%"></i></div>${fmt(r[key('sold')])}<td>${fmt(r[key('stock')])}<td>${fmt(r[key('denied')])}<td>${fmt(r[key('other')])}<td>${fmt(r[key('pro')])}</tr>`).join('')}</table></div></section>
+ <section><h3>Products in ${sub}${un=='val'?'':' ('+U+')'}${sf?' · '+esc(sf):''}</h3>${pOK?`<div class=sc><table><tr><th>SKU<th>Product<th>Supplier<th>Sales<th>Closing stock<th>Denied<th>Debit notes<th>PD for ${mon(pm(to))}</tr>${pshown.map(r=>`<tr><td>${r.item_index}<td style="white-space:normal;min-width:250px">${esc(r.nomenclature)}<td style="white-space:normal;min-width:170px">${esc(r.supname)}<td><div class=bar><i style="width:${(+r[key('sold')]||0)/pmax*100}%"></i></div>${fmt(r[key('sold')])}<td>${fmt(r[key('stock')])}<td>${fmt(r[key('denied')])}<td>${fmt(r[key('other')])}<td>${fmt(r[key('pro')])}</tr>`).join('')}</table></div>${ps.length>25?`<p><button class=sm onclick="pick('all')">${showAll?'Show top 25 only':'Show all '+ps.length+' products'}</button></p>`:''}`:`<div id=pbox>${pmsg}</div>`}</section>`;
  hh();
  if(typeof Chart=='undefined')return;
  Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
@@ -164,6 +177,11 @@ async function dash(fresh){
  if(trOK)mkc('c3',{type:'bar',data:{labels:tr.map(r=>mon(r.mnth)),datasets:[{data:tr.map(r=>+r[key(dm)]),backgroundColor:tr.map(r=>(FYm?fyOf(r.mnth)==fy:r.mnth==cm)?'#0e1a3a':'#c9d2e6'),borderRadius:5}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{y:{grace:'12%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}},onClick:(e,el)=>{if(el.length)pick('cm',tr[el[0].index].mnth)}}});
  const tp=[...d0].sort((x,y)=>y[key(dm)]-x[key(dm)]).slice(0,10);
  mkc('c4',{type:'bar',data:{labels:tp.map(r=>r.depot),datasets:[{data:tp.map(r=>+r[key(dm)]),backgroundColor:tp.map(r=>!df||df==r.depot?(RC[r.region]||'#0e1a3a'):'#d5dbea'),borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TIP},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}},onClick:(e,el)=>{if(el.length)pick('df',tp[el[0].index].depot)}}});
+ if(pOK){
+ mkc('c5',{type:'bar',data:{labels:p10.map(r=>String(r.nomenclature||'').slice(0,26)),datasets:[{data:p10.map(r=>+r[Kd]||0),backgroundColor:'#c8a24a',borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>{const r=p10[c[0].dataIndex];return r?r.nomenclature+' (SKU '+r.item_index+')':''},label:TIP.callbacks.label}}},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}}}});
+ const SC=['#0e1a3a','#c8a24a','#3d5a99','#8fa3d1','#b5483a','#5d8a6b','#a8895c','#6b6f82','#d5dbea'];
+ mkc('c6',{type:'doughnut',data:{labels:sn.map((n,i)=>String(n).replace(/^M\/S\./,'').slice(0,28)+' · '+fmt(sv[i])),datasets:[{data:sv,backgroundColor:sn.map((n,i)=>!sf||n==sf?SC[i%SC.length]:SC[i%SC.length]+'44'),borderWidth:2}]},options:{maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10}}},tooltip:TIP},onClick:(e,el)=>{if(el.length&&sn[el[0].index]!='Others')pick('sf',sn[el[0].index])}}});
+ }
 }
 const SZ=['S','M','L','XL'],MS=['sold','pro','stock','denied','other'];
 let lm='sold',showAll=false;
@@ -253,16 +271,16 @@ const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
 let[p,b,dp]=await Promise.all([sb.from('profiles').select('*').order('email'),sb.from('upload_batches').select('*').order('mnth',{ascending:false}),sb.from('master_depot_regions').select('depot,region,depot_size').order('depot')]);if(dp.error)dp=await sb.from('master_depot_regions').select('depot,region').order('depot');
 const DP=(dp.data||[]).map(x=>x.depot),dops=s=>DP.map(x=>`<option ${(s||[]).includes(x)?'selected':''}>${x}</option>`).join('');
 v.innerHTML=`<h2>Admin controls</h2><p class=mu>Only approved emails can sign in. Depot teams see their assigned depots (several people can share one depot), regional heads see their region, and the national head and director see everything. Only admins can edit.</p>
-<section><h3>Team access</h3><div class=row style="margin-bottom:12px"><input type=email id=ne placeholder="Google email"><select id=nr onchange="fv()">${ropts('depot')}</select><select id=ng hidden><option value="">Choose region</option>${opts(REG)}</select><select id=nd multiple size=4 hidden title="Hold Ctrl to pick several depots">${dops()}</select><label class=mu id=nul><input type=checkbox id=nu> Can upload data</label><button class=btn onclick="addp()">Add user</button></div><div id=pe></div>
-<div class=sc><table><tr><th>Email<th>Role<th>Region access<th>Depot access<th>Can upload<th>Status<th></tr>${(p.data||[]).map(x=>{const me_=x.email==me.email,e=esc(x.email);return`<tr><td>${e}${me_?' (you)':''}<td>${me_?x.role:`<select onchange="upd('${e}','role',this.value)">${ropts(x.role)}</select>`}<td>${me_||x.role!='regional'?'—':`<select onchange="upd('${e}','region',this.value||null)"><option value="">—</option>${opts(REG,x.region)}</select>`}<td>${me_||x.role!='depot'?'—':`<select multiple size=3 onchange="upd('${e}','depots',[...this.selectedOptions].map(o=>o.value))">${dops(x.depots)}</select>`}<td>${x.role=='admin'?'Yes':x.role=='depot'?'Never':`<button class=sm onclick="upd('${e}','can_upload',${!x.can_upload})">${x.can_upload?'Allowed':'Not allowed'}</button>`}<td>${me_?'Active':`<button class=sm onclick="upd('${e}','active',${!x.active})">${x.active?'Active':'Disabled'}</button>`}<td>${me_?'':`<button class=sm onclick="rm('${e}')">Remove</button>`}</tr>`}).join('')}</table></div></section>
+<section><h3>Team access</h3><div class=row style="margin-bottom:12px"><input type=email id=ne placeholder="Google email"><select id=nr onchange="fv()">${ropts('depot')}</select><select id=ng hidden><option value="">Choose region</option>${opts(REG)}</select><select id=nd multiple size=4 hidden title="Hold Ctrl to pick several depots">${dops()}</select><label class=mu id=nlb><input type=checkbox id=nl> Leaderboard</label><label class=mu id=nul><input type=checkbox id=nu> Can upload data</label><button class=btn onclick="addp()">Add user</button></div><div id=pe></div>
+<div class=sc><table><tr><th>Email<th>Role<th>Region access<th>Depot access<th>Leaderboard<th>Can upload<th>Status<th></tr>${(p.data||[]).map(x=>{const me_=x.email==me.email,e=esc(x.email);return`<tr><td>${e}${me_?' (you)':''}<td>${me_?x.role:`<select onchange="upd('${e}','role',this.value)">${ropts(x.role)}</select>`}<td>${me_||x.role!='regional'?'—':`<select onchange="upd('${e}','region',this.value||null)"><option value="">—</option>${opts(REG,x.region)}</select>`}<td>${me_||x.role!='depot'?'—':`<select multiple size=3 onchange="upd('${e}','depots',[...this.selectedOptions].map(o=>o.value))">${dops(x.depots)}</select>`}<td>${x.role=='admin'?'Yes':`<button class=sm onclick="upd('${e}','can_leaderboard',${!LB(x)})">${LB(x)?'Allowed':'Not allowed'}</button>`}<td>${x.role=='admin'?'Yes':x.role=='depot'?'Never':`<button class=sm onclick="upd('${e}','can_upload',${!x.can_upload})">${x.can_upload?'Allowed':'Not allowed'}</button>`}<td>${me_?'Active':`<button class=sm onclick="upd('${e}','active',${!x.active})">${x.active?'Active':'Disabled'}</button>`}<td>${me_?'':`<button class=sm onclick="rm('${e}')">Remove</button>`}</tr>`}).join('')}</table></div></section>
 <section><h3>Depots &amp; regions</h3><p class=mu>Add a new depot here before uploading a file that contains it. Changing a depot's region also updates its already uploaded data.</p><div class=row style="margin-bottom:12px"><input type=text id=xd placeholder="New depot name"><select id=xr>${opts(REG)}</select><select id=xz><option value="">Size</option>${opts(SZ)}</select><button class=btn onclick="addd()">Add depot</button></div><div id=de></div><div class=sc><table><tr><th>Depot<th>Region<th>Size<th></tr>${(dp.data||[]).map(x=>{const d=esc(x.depot);return`<tr><td>${d}<td><select onchange="setr('${d}',this.value)">${opts(REG,x.region)}</select><td><select onchange="setz('${d}',this.value)"><option value="">—</option>${opts(SZ,x.depot_size)}</select><td><button class=sm onclick="rmd('${d}')">Remove</button></tr>`}).join('')}</table></div></section>
 <section><h3>Upload history</h3><div class=sc><table><tr><th>Month<th>File<th>Rows<th>Uploaded by<th>When<th></tr>${(b.data||[]).map(x=>`<tr><td>${mon(x.mnth)}<td>${esc(x.filename)}<td>${(x.row_count||0).toLocaleString('en-IN')}<td>${esc(x.uploaded_by)}<td>${new Date(x.uploaded_at).toLocaleString('en-IN')}<td><button class=sm onclick="delb(${x.id},'${mon(x.mnth)}')">Delete month data</button></tr>`).join('')}</table></div></section>`;fv()}
 async function addp(){
 const e=$('#ne').value.trim().toLowerCase(),r=$('#nr').value,g=$('#ng').value||null,d=[...$('#nd').selectedOptions].map(o=>o.value),pe=$('#pe');
 if(!/^[^\s@'"<>]+@[^\s@'"<>]+\.[^\s@'"<>]+$/.test(e))return pe.innerHTML='<div class=err>Enter a valid email.</div>';
 if(r=='regional'&&!g)return pe.innerHTML='<div class=err>Choose a region for a regional head.</div>';if(r=='depot'&&!d.length)return pe.innerHTML='<div class=err>Choose at least one depot.</div>';
-const{error}=await sb.from('profiles').insert({email:e,role:r,region:r=='regional'?g:null,depots:r=='depot'?d:[],can_upload:r!='depot'&&$('#nu').checked});if(error)return pe.innerHTML=`<div class=err>${esc(error.message)}</div>`;admn()}
-async function upd(e,k,x){const u={[k]:x};if(k=='role'){u.region=null;u.depots=[];if(x=='depot')u.can_upload=false}const{error}=await sb.from('profiles').update(u).eq('email',e);if(error)alert(error.message);admn()}
+const{error}=await sb.from('profiles').insert({email:e,role:r,region:r=='regional'?g:null,depots:r=='depot'?d:[],can_upload:r!='depot'&&$('#nu').checked,can_leaderboard:$('#nl').checked});if(error)return pe.innerHTML=`<div class=err>${esc(error.message)}</div>`;admn()}
+async function upd(e,k,x){const u={[k]:x};if(k=='role'){u.region=null;u.depots=[];if(x=='depot')u.can_upload=false;u.can_leaderboard=['admin','national','director'].includes(x)}const{error}=await sb.from('profiles').update(u).eq('email',e);if(error)alert(error.message);admn()}
 async function rm(e){if(!confirm('Remove '+e+'? They will lose access.'))return;const{error}=await sb.from('profiles').delete().eq('email',e);if(error)alert(error.message);admn()}
 async function addd(){const d=$('#xd').value.trim().toUpperCase().replace(/\s+/g,' '),r=$('#xr').value,pe=$('#de');
 if(!/^[A-Z0-9][A-Z0-9 .-]*$/.test(d))return pe.innerHTML='<div class=err>Use only letters, numbers, spaces, dots or hyphens in the depot name.</div>';
