@@ -91,14 +91,14 @@ app.innerHTML=`<header><img src=logo.png width=40 height=40 alt=""><b>NMBS</b><s
 <nav><button id=t-dash onclick="show('dash')">Dashboard</button>${LB(p)?`<button id=t-lead onclick="show('lead')">Leaderboard</button>`:''}${ad||(p.can_upload&&p.role!='depot')?`<button id=t-upl onclick="show('upl')">Upload data</button>`:''}${ad?`<button id=t-admn onclick="show('admn')">Admin controls</button>`:''}</nav>
 <div class=u>${esc(email)}<i>${esc(ROLE[p.role])}</i><button onclick="out()">Logout</button></div></header><main id=v></main>`;
 watch();show(p.role=='director'&&LB(p)?'lead':'dash')}
-function show(t){if(t=='dash'||t=='lead'){cm='';rf='';df='';sf='';showAll=false}document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));VIEW++;({dash:()=>dash(true),lead:()=>lead(true),upl,admn})[t]()}
+function show(t){if(t=='dash'||t=='lead'){cm='';rf='';df='';su='';showAll=false}document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.id=='t-'+t));VIEW++;({dash:()=>dash(true),lead:()=>lead(true),upl,admn})[t]()}
 const hh=()=>{const h=document.querySelector('header');if(h)document.documentElement.style.setProperty('--hh',h.offsetHeight+'px')};window.addEventListener('resize',hh);
 const nm=n=>{n=+n||0;return n>=1e7?(n/1e7).toFixed(2)+' Cr':n>=1e5?(n/1e5).toFixed(2)+' L':Math.round(n).toLocaleString('en-IN')},sh=nm;
 const VL={id:'vl',afterDatasetsDraw(ch){const ty=ch.config.type,hz=ch.options.indexAxis=='y',x=ch.ctx,ds=ch.data.datasets[0],tot=ds.data.reduce((s,q)=>s+ +q,0)||1;x.save();x.font='600 11px "Segoe UI",sans-serif';
  ch.getDatasetMeta(0).data.forEach((el,i)=>{const q=+ds.data[i];if(!q)return;
  if(ty=='bar'){x.fillStyle='#1a2238';if(hz){x.textAlign='left';x.textBaseline='middle';x.fillText(sh(q),el.x+6,el.y)}else{x.textAlign='center';x.textBaseline='bottom';x.fillText(sh(q),el.x,el.y-4)}}
  else if(q/tot>.06){const p=el.tooltipPosition(),bg=String(ds.backgroundColor[i]),c=bg.slice(1,7),l=.299*parseInt(c.slice(0,2),16)+.587*parseInt(c.slice(2,4),16)+.114*parseInt(c.slice(4,6),16);x.fillStyle=(bg.length>7||l>140)?'#1a2238':'#fff';x.textAlign='center';x.textBaseline='middle';x.fillText(sh(q),p.x,p.y)}});x.restore()}};
-let dm='sold',un='val',df='',sf='',CH=[];
+let dm='sold',un='val',df='',su='',CH=[];
 const BN={sold:'Sales',stock:'Closing stock',denied:'Denied',other:'Debit notes',pro:'Provisional demand (PD)'},VN={sold:'Sales value',stock:'Closing stock value',denied:'Denied value',other:'Debit notes',pro:'Provisional demand (PD)'},UT={val:'Value (₹)',u:'Units (Nos)',c:'Cases'},UL={val:'₹',u:'Nos',c:'Cases'};
 const NMX=b=>un=='val'?VN[b]:BN[b]+' ('+UL[un]+')';
 const fyOf=m=>{const y=+m.slice(0,4);return +m.slice(5,7)>=4?y:y-1},fyN=y=>'FY '+y+'-'+String(y+1).slice(2),pyr=m=>(+m.slice(0,4)-1)+m.slice(4);
@@ -107,12 +107,13 @@ const key=b=>un=='val'?b+'val':b+'_'+un,fmt=n=>un=='val'?cr(n):nm(n);
 const dlt=(c,q,l)=>{q=+q;if(!q)return'';const p=(c/q-1)*100;return`<span class=dl>${p>=0?'▲':'▼'} ${Math.abs(p).toFixed(1)}% vs ${l}</span>`};
 const mkc=(id,cfg)=>CH.push(new Chart(document.getElementById(id),{plugins:[VL],...cfg}));
 const TIP={callbacks:{label:c=>' '+fmt(c.raw)}};
-const pick=(k,x)=>{if(k=='dm')dm=x;if(k=='un')un=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;if(k=='sf')sf=sf==x?'':x;if(k=='sf0')sf='';if(k=='all')showAll=!showAll;dash()};
+const pick=(k,x)=>{if(k=='dm')dm=x;if(k=='un')un=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;if(k=='su')su=x;if(k=='sut')su=su==x?'':x;if(k=='all')showAll=!showAll;dash()};
 let VIEW=0;const CACHE={};
 const bust=()=>{Object.keys(CACHE).forEach(k=>delete CACHE[k])};
 const ck=(n,a)=>n+JSON.stringify(a||{});
 const rc=(n,a)=>{const k=ck(n,a);if(!CACHE[k]){const e={};e.p=sb.rpc(n,a).then(r=>{if(r.error)delete CACHE[k];else e.d=r;return r});CACHE[k]=e}return CACHE[k]};
 async function batches(fresh){if(CACHE.batches&&!fresh)return CACHE.batches;const{data:b}=await sb.from('upload_batches').select('mnth');const ms=[...new Set((b||[]).map(x=>x.mnth))].sort().reverse();const sig=ms.join();if(CACHE.sig!==sig){bust();CACHE.sig=sig}CACHE.batches=ms;return ms}
+async function snames(){if(CACHE.snames)return CACHE.snames;const r=await sb.from('supplier_names').select('supname,short_name'),m={};(r.data||[]).forEach(x=>m[x.supname]=x.short_name);CACHE.snames=m;return m}
 async function sizes(){if(CACHE.sizes)return CACHE.sizes;const r=await sb.from('master_depot_regions').select('depot,depot_size'),m={};(r.data||[]).forEach(x=>m[x.depot]=x.depot_size);CACHE.sizes=m;return m}
 async function dash(fresh){
  CH.forEach(c=>c.destroy());CH=[];
@@ -123,11 +124,13 @@ async function dash(fresh){
  if(/^FY\d+$/.test(cm)){if(!fys.includes(+cm.slice(2)))cm=ms[0]}else if(!ms.includes(cm))cm=ms[0];
  const FYm=/^FY\d+$/.test(cm),fy=FYm?+cm.slice(2):0,fmn=FYm?fm(fy):[cm],from=fmn[0],to=fmn[fmn.length-1];
  const fyL=y=>{const q=fm(y);return fyN(y)+' ('+MN[+q[0].slice(5,7)-1]+'–'+MN[+q[q.length-1].slice(5,7)-1]+')'};
- const ePf=FYm&&ms.includes(pyr(from))&&ms.includes(pyr(to))?rc('dash_by_depot',{p_from:pyr(from),p_to:pyr(to)}):null;
- const eA=rc('dash_by_depot',{p_from:from,p_to:to}),eT=rc('dash_trend'),eP=rc('dash_by_product',{p_from:from,p_to:to,p_region:rf||null,p_depot:df||null});
+ const ePf=FYm&&ms.includes(pyr(from))&&ms.includes(pyr(to))?rc('dash_by_depot',{p_from:pyr(from),p_to:pyr(to),...(su?{p_sup:su}:{})}):null;
+ const eA=rc('dash_by_depot',{p_from:from,p_to:to,...(su?{p_sup:su}:{})}),eT=rc('dash_trend',su?{p_sup:su}:{}),eP=rc('dash_by_product',{p_from:from,p_to:to,p_region:rf||null,p_depot:df||null,...(su?{p_sup:su}:{})}),eS=rc('dash_suppliers',{p_from:from,p_to:to});
  if(!eA.d)v.innerHTML='<p class=mu>Loading…</p>';
- const[a,pr]=await Promise.all([eA.p,ePf?ePf.p:null]);
+ const[a,pr,sres]=await Promise.all([eA.p,ePf?ePf.p:null,eS.p]);
  if(my!==VIEW)return;
+ const supl=sres&&!sres.error?sres.data:[],snm=await snames();
+ if(su&&supl.length&&!supl.some(x=>x.short_name==su)){su='';return dash()}
  const t=eT.d||null;
  if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
  if(!t)eT.p.then(r=>{if(my!==VIEW)return;if(r.error){const el=$('#c3box');if(el)el.innerHTML='<div class=err>'+esc(r.error.message)+'</div>'}else dash()});
@@ -144,15 +147,16 @@ async function dash(fresh){
  const dl=k=>{const c=S(key(k));if(FYm)return prr?dlt(c,prr.reduce((s,r)=>s+ +r[key(k)],0),'last year'):'';if(rf||df)return'';return(pv?dlt(c,pv[key(k)],mon(pv.mnth)):'')+(py?dlt(c,py[key(k)],mon(py.mnth)):'')};
  const K=[['sold',FYm?fyL(fy):'Sales in '+mon(cm)],['stock','Stock at end of '+mon(to)],['denied',FYm?fyL(fy):'Lost demand in '+mon(cm)],['other',FYm?fyL(fy):'Other issues in '+mon(cm)],['pro','PD for '+mon(pm(to))]];
  const mx=Math.max(1,...d.map(r=>+r[key('sold')])),U=UL[un],pl=FYm?((dm=='stock'||dm=='pro')?'as at '+mon(to):fyN(fy)):mon(cm),sub=FYm?fyN(fy):mon(cm);
- const fl=[rf?`<button class=chip onclick="pick('rf','${rf}')">Region: ${rf} ✕</button>`:'',df?`<button class=chip onclick="pick('df','${esc(df)}')">Depot: ${esc(df)} ✕</button>`:'',sf?`<button class=chip onclick="pick('sf0')">Supplier: ${esc(sf)} ✕</button>`:''].join('');
+ const fl=[rf?`<button class=chip onclick="pick('rf','${rf}')">Region: ${rf} ✕</button>`:'',df?`<button class=chip onclick="pick('df','${esc(df)}')">Depot: ${esc(df)} ✕</button>`:'',su?`<button class=chip onclick="pick('su','')">Supplier: ${esc(su)} ✕</button>`:''].join('');
  const pOK=!!(pq&&!pq.error),pall=pOK?pq.data:[],Kd=key(dm);
- const spl={};pall.forEach(r=>{const n=r.supname||'(none)';spl[n]=(spl[n]||0)+(+r[Kd]||0)});
+ const spl={};pall.forEach(r=>{const n=snm[r.supname]||r.supname||'(none)';spl[n]=(spl[n]||0)+(+r[Kd]||0)});
  const sl2=Object.entries(spl).sort((x,y)=>y[1]-x[1]),s8=sl2.slice(0,8),soth=sl2.slice(8).reduce((s,x)=>s+x[1],0);
  const sn=s8.map(x=>x[0]).concat(soth>0?['Others']:[]),sv=s8.map(x=>x[1]).concat(soth>0?[soth]:[]);
- const ps=pall.filter(r=>!sf||(r.supname||'(none)')==sf).sort((x,y)=>(+y[Kd]||0)-(+x[Kd]||0)),pt=[...ps].sort((x,y)=>(+y[key('sold')]||0)-(+x[key('sold')]||0)),pmax=pt[0]?(+pt[0][key('sold')]||1):1,pshown=showAll?pt:pt.slice(0,25),p10=ps.slice(0,10);
+ const ps=[...pall].sort((x,y)=>(+y[Kd]||0)-(+x[Kd]||0)),pt=[...ps].sort((x,y)=>(+y[key('sold')]||0)-(+x[key('sold')]||0)),pmax=pt[0]?(+pt[0][key('sold')]||1):1,pshown=showAll?pt:pt.slice(0,25),p10=ps.slice(0,10);
  const pmsg=pq?(pq.error?'<div class=err>'+esc(pq.error.message)+'</div>':''):'<p class=mu style="padding:16px">Loading products…</p>';
  v.innerHTML=`<div class=stk><div class=bar0><select onchange="pick('cm',this.value)"><optgroup label="Financial year">${fys.map(y=>`<option value=FY${y} ${cm=='FY'+y?'selected':''}>${fyL(y)}</option>`).join('')}</optgroup><optgroup label="Months">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</optgroup></select>
  <select onchange="pick('un',this.value)">${Object.entries(UT).map(([k,n])=>`<option value=${k} ${k==un?'selected':''}>${n}</option>`).join('')}</select>
+ <select onchange="pick('su',this.value)"><option value="">All suppliers</option>${supl.map(x=>`<option value="${esc(x.short_name)}" ${x.short_name==su?'selected':''}>${esc(x.short_name)}</option>`).join('')}</select>
  <span class=mu>${FULL.includes(me.role)?ROLE[me.role]+' view':esc(scope(me))}</span>${fl}<span class=mu style="margin-left:auto">Tip: click a chart slice or bar to filter</span></div>
  <div class=kp>${K.map(([k,s])=>`<div class=k><small>${NMX(k)}</small><b>${fmt(S(key(k)))}</b><em>${s}${dl(k)}</em></div>`).join('')}<div class="k hz"><small>PD Month</small><b>${mon(pm(to))}</b></div></div>
  <div class=row style="margin-bottom:12px"><b>Show charts for:</b>${Object.keys(BN).map(k=>`<button class="chip ${k==dm?'on':''}" onclick="pick('dm','${k}')">${NMX(k)}</button>`).join('')}</div></div>
@@ -162,11 +166,11 @@ async function dash(fresh){
  <section><h3>${NMX(dm)} by month (all regions)</h3><div class=cv id=c3box>${trOK?'<canvas id=c3></canvas>':'<p class=mu style="padding:16px">Loading monthly trend…</p>'}</div></section>
  <section><h3>Top 10 depots · ${NMX(dm)} · ${pl}</h3><div class=cv><canvas id=c4></canvas></div></section></div>
  <div class=gr>
- <section><h3>Top 10 products${sf?' · '+esc(sf):''} · ${NMX(dm)} · ${pl}</h3><div class=cv id=pb5>${pOK?'<canvas id=c5></canvas>':pmsg}</div></section>
+ <section><h3>Top 10 products${su?' · '+esc(su):''} · ${NMX(dm)} · ${pl}</h3><div class=cv id=pb5>${pOK?'<canvas id=c5></canvas>':pmsg}</div></section>
  <section><h3>By supplier · ${NMX(dm)} · ${pl}</h3><div class=cv id=pb6>${pOK?'<canvas id=c6></canvas>':pmsg}</div></section></div>
  <section><h3>Depots in ${sub}${un=='val'?'':' ('+U+')'}</h3><div class=sc><table><tr><th>Depot<th>Region<th>Sales<th>Closing stock<th>Denied<th>Debit notes<th>PD for ${mon(pm(to))}</tr>
  ${d.map(r=>`<tr><td>${esc(r.depot)}<td>${r.region}<td><div class=bar><i style="width:${+r[key('sold')]/mx*100}%"></i></div>${fmt(r[key('sold')])}<td>${fmt(r[key('stock')])}<td>${fmt(r[key('denied')])}<td>${fmt(r[key('other')])}<td>${fmt(r[key('pro')])}</tr>`).join('')}</table></div></section>
- <section><h3>Products in ${sub}${un=='val'?'':' ('+U+')'}${sf?' · '+esc(sf):''}</h3>${pOK?`<div class=sc><table><tr><th>SKU<th>Product<th>Supplier<th>Sales<th>Closing stock<th>Denied<th>Debit notes<th>PD for ${mon(pm(to))}</tr>${pshown.map(r=>`<tr><td>${r.item_index}<td style="white-space:normal;min-width:250px">${esc(r.nomenclature)}<td style="white-space:normal;min-width:170px">${esc(r.supname)}<td><div class=bar><i style="width:${(+r[key('sold')]||0)/pmax*100}%"></i></div>${fmt(r[key('sold')])}<td>${fmt(r[key('stock')])}<td>${fmt(r[key('denied')])}<td>${fmt(r[key('other')])}<td>${fmt(r[key('pro')])}</tr>`).join('')}</table></div>${ps.length>25?`<p><button class=sm onclick="pick('all')">${showAll?'Show top 25 only':'Show all '+ps.length+' products'}</button></p>`:''}`:`<div id=pbox>${pmsg}</div>`}</section>`;
+ <section><h3>Products in ${sub}${un=='val'?'':' ('+U+')'}${su?' · '+esc(su):''}</h3>${pOK?`<div class=sc><table><tr><th>SKU<th>Product<th>Supplier<th>Sales<th>Closing stock<th>Denied<th>Debit notes<th>PD for ${mon(pm(to))}</tr>${pshown.map(r=>`<tr><td>${r.item_index}<td style="white-space:normal;min-width:250px">${esc(r.nomenclature)}<td title="${esc(r.supname)}" style="white-space:normal;min-width:170px">${esc(snm[r.supname]||r.supname)}<td><div class=bar><i style="width:${(+r[key('sold')]||0)/pmax*100}%"></i></div>${fmt(r[key('sold')])}<td>${fmt(r[key('stock')])}<td>${fmt(r[key('denied')])}<td>${fmt(r[key('other')])}<td>${fmt(r[key('pro')])}</tr>`).join('')}</table></div>${ps.length>25?`<p><button class=sm onclick="pick('all')">${showAll?'Show top 25 only':'Show all '+ps.length+' products'}</button></p>`:''}`:`<div id=pbox>${pmsg}</div>`}</section>`;
  hh();
  if(typeof Chart=='undefined')return;
  Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
@@ -180,12 +184,12 @@ async function dash(fresh){
  if(pOK){
  mkc('c5',{type:'bar',data:{labels:p10.map(r=>String(r.nomenclature||'').slice(0,26)),datasets:[{data:p10.map(r=>+r[Kd]||0),backgroundColor:'#c8a24a',borderRadius:4}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>{const r=p10[c[0].dataIndex];return r?r.nomenclature+' (SKU '+r.item_index+')':''},label:TIP.callbacks.label}}},scales:{x:{grace:'22%',ticks:{maxTicksLimit:6,callback:x=>fmt(x)}}}}});
  const SC=['#0e1a3a','#c8a24a','#3d5a99','#8fa3d1','#b5483a','#5d8a6b','#a8895c','#6b6f82','#d5dbea'];
- mkc('c6',{type:'doughnut',data:{labels:sn.map((n,i)=>String(n).replace(/^M\/S\./,'').slice(0,28)+' · '+fmt(sv[i])),datasets:[{data:sv,backgroundColor:sn.map((n,i)=>!sf||n==sf?SC[i%SC.length]:SC[i%SC.length]+'44'),borderWidth:2}]},options:{maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10}}},tooltip:TIP},onClick:(e,el)=>{if(el.length&&sn[el[0].index]!='Others')pick('sf',sn[el[0].index])}}});
+ mkc('c6',{type:'doughnut',data:{labels:sn.map((n,i)=>String(n)+' · '+fmt(sv[i])),datasets:[{data:sv,backgroundColor:sn.map((n,i)=>!su||n==su?SC[i%SC.length]:SC[i%SC.length]+'44'),borderWidth:2}]},options:{maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10}}},tooltip:TIP},onClick:(e,el)=>{if(el.length&&sn[el[0].index]!='Others')pick('sut',sn[el[0].index])}}});
  }
 }
 const SZ=['S','M','L','XL'],MS=['sold','pro','stock','denied','other'];
 let lm='sold',showAll=false;
-const LK=(k,x)=>{if(k=='lm')lm=x;if(k=='un')un=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;if(k=='all')showAll=!showAll;lead()};
+const LK=(k,x)=>{if(k=='lm')lm=x;if(k=='un')un=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;if(k=='su')su=x;if(k=='sut')su=su==x?'':x;if(k=='all')showAll=!showAll;lead()};
 async function lead(fresh){
  CH.forEach(c=>c.destroy());CH=[];
  const my=++VIEW,v=$('#v');if(!CACHE.batches||fresh)v.innerHTML='<p class=mu>Loading…</p>';
@@ -195,10 +199,12 @@ async function lead(fresh){
  if(/^FY\d+$/.test(cm)){if(!fys.includes(+cm.slice(2)))cm=ms[0]}else if(!ms.includes(cm))cm=ms[0];
  const FYm=/^FY\d+$/.test(cm),fy=FYm?+cm.slice(2):0,fmn=FYm?fm(fy):[cm],from=fmn[0],to=fmn[fmn.length-1],nmo=fmn.length;
  const fyL=y=>{const q=fm(y);return fyN(y)+' ('+MN[+q[0].slice(5,7)-1]+'–'+MN[+q[q.length-1].slice(5,7)-1]+')'};
- const eA=rc('dash_by_depot',{p_from:from,p_to:to}),eP=rc('dash_by_product',{p_from:from,p_to:to,p_region:rf||null,p_depot:df||null});
+ const eA=rc('dash_by_depot',{p_from:from,p_to:to,...(su?{p_sup:su}:{})}),eP=rc('dash_by_product',{p_from:from,p_to:to,p_region:rf||null,p_depot:df||null,...(su?{p_sup:su}:{})}),eS=rc('dash_suppliers',{p_from:from,p_to:to});
  if(!eA.d)v.innerHTML='<p class=mu>Loading…</p>';
- const[a,sz]=await Promise.all([eA.p,sizes()]);
+ const[a,sz,sres]=await Promise.all([eA.p,sizes(),eS.p]);
  if(my!==VIEW)return;
+ const supl=sres&&!sres.error?sres.data:[],snm=await snames();
+ if(su&&supl.length&&!supl.some(x=>x.short_name==su)){su='';return lead()}
  const pp=eP.d||null;
  if(!pp)eP.p.then(r=>{if(my!==VIEW)return;if(r.error){const el=$('#pbox');if(el)el.innerHTML='<div class=err>'+esc(r.error.message)+'</div>'}else lead()});
  if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
@@ -211,9 +217,10 @@ async function lead(fresh){
  if(df&&!d0.some(r=>r.depot==df))df='';
  const prs=pp&&!pp.error?[...pp.data].sort((x,y)=>y[K]-x[K]):[],pt=prs.reduce((s,r)=>s+ +r[K],0)||1,pmx=prs[0]?+prs[0][K]||1:1,shown=showAll?prs:prs.slice(0,25);
  const pl=FYm?((lm=='stock'||lm=='pro')?'as at '+mon(to):fyN(fy)):mon(cm),pc=x=>(x/rt*100).toFixed(1)+'%',sc=rf?' · '+rf:'',sd=df?' · '+esc(df):'';
- const fl=[rf?`<button class=chip onclick="LK('rf','${rf}')">Region: ${rf} ✕</button>`:'',df?`<button class=chip onclick="LK('df','${esc(df)}')">Depot: ${esc(df)} ✕</button>`:''].join('');
+ const fl=[rf?`<button class=chip onclick="LK('rf','${rf}')">Region: ${rf} ✕</button>`:'',df?`<button class=chip onclick="LK('df','${esc(df)}')">Depot: ${esc(df)} ✕</button>`:'',su?`<button class=chip onclick="LK('su','')">Supplier: ${esc(su)} ✕</button>`:''].join('');
  v.innerHTML=`<div class=stk><div class=bar0><select onchange="LK('cm',this.value)"><optgroup label="Financial year">${fys.map(y=>`<option value=FY${y} ${cm=='FY'+y?'selected':''}>${fyL(y)}</option>`).join('')}</optgroup><optgroup label="Months">${ms.map(m=>`<option value=${m} ${m==cm?'selected':''}>${mon(m)}</option>`).join('')}</optgroup></select>
  <select onchange="LK('un',this.value)">${Object.entries(UT).map(([k,n])=>`<option value=${k} ${k==un?'selected':''}>${n}</option>`).join('')}</select>
+ <select onchange="LK('su',this.value)"><option value="">All suppliers</option>${supl.map(x=>`<option value="${esc(x.short_name)}" ${x.short_name==su?'selected':''}>${esc(x.short_name)}</option>`).join('')}</select>
  <select onchange="LK('lm',this.value)">${MS.map(k=>`<option value=${k} ${k==lm?'selected':''}>${BN[k]}</option>`).join('')}</select>
  <span class=mu>Ranked highest first, ${FYm?fyL(fy):mon(cm)}</span>${fl}<span class=mu style="margin-left:auto">Tip: click a region, depot or row to filter</span></div></div>
  <div class=gr>
@@ -223,7 +230,7 @@ async function lead(fresh){
  <section><h3>Top 10 products${sc}${sd} · ${pl}</h3><div class=cv>${pp?'<canvas id=l4></canvas>':'<p class=mu style="padding:16px">Loading products…</p>'}</div></section></div>
  <section><h3>Regions</h3><div class=sc><table><tr><th>Rank<th>Region<th>${NMX(lm)}<th>Share${apm?'<th>APM':''}</tr>${rr.map(([n,x],i)=>`<tr class="cl ${rf==n?'hl':''}" onclick="LK('rf','${n}')"><td>${i+1}<td>${n}<td><div class=bar><i style="width:${x/rm*100}%"></i></div>${fmt(x)}<td>${pc(x)}${apm?'<td>'+fmt(x/nmo):''}</tr>`).join('')}</table></div></section>
  <section><h3>Depots${sc}</h3><div class=sc><table><tr><th>Rank<th>Depot<th>Region<th>Size<th>${NMX(lm)}<th>Share${apm?'<th>APM':''}</tr>${d0.map((r,i)=>`<tr class="cl ${df==r.depot?'hl':''}" onclick="LK('df','${esc(r.depot)}')"><td>${i+1}<td>${esc(r.depot)}<td>${r.region}<td>${sz[r.depot]||'—'}<td><div class=bar><i style="width:${+r[K]/dmx*100}%"></i></div>${fmt(r[K])}<td>${(+r[K]/dt*100).toFixed(1)}%${apm?'<td>'+fmt(+r[K]/nmo):''}</tr>`).join('')}</table></div></section>
- <section><h3>Products${sc}${sd} · ${pl}</h3>${!pp?'<div id=pbox><p class=mu>Loading products…</p></div>':pp.error?`<div class=err>${esc(pp.error.message)}</div>`:`<div class=sc><table><tr><th>Rank<th>SKU<th>Product<th>Supplier<th>${NMX(lm)}<th>Share</tr>${shown.map((r,i)=>`<tr><td>${i+1}<td>${r.item_index}<td>${esc(r.nomenclature)}<td>${esc(r.supname)}<td><div class=bar><i style="width:${+r[K]/pmx*100}%"></i></div>${fmt(r[K])}<td>${(+r[K]/pt*100).toFixed(1)}%</tr>`).join('')}</table></div>${prs.length>25?`<p><button class=sm onclick="LK('all')">${showAll?'Show top 25 only':'Show all '+prs.length+' products'}</button></p>`:''}`}</section>`;
+ <section><h3>Products${sc}${sd} · ${pl}</h3>${!pp?'<div id=pbox><p class=mu>Loading products…</p></div>':pp.error?`<div class=err>${esc(pp.error.message)}</div>`:`<div class=sc><table><tr><th>Rank<th>SKU<th>Product<th>Supplier<th>${NMX(lm)}<th>Share</tr>${shown.map((r,i)=>`<tr><td>${i+1}<td>${r.item_index}<td>${esc(r.nomenclature)}<td title="${esc(r.supname)}">${esc(snm[r.supname]||r.supname)}<td><div class=bar><i style="width:${+r[K]/pmx*100}%"></i></div>${fmt(r[K])}<td>${(+r[K]/pt*100).toFixed(1)}%</tr>`).join('')}</table></div>${prs.length>25?`<p><button class=sm onclick="LK('all')">${showAll?'Show top 25 only':'Show all '+prs.length+' products'}</button></p>`:''}`}</section>`;
  hh();
  if(typeof Chart=='undefined')return;
  Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
