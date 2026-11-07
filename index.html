@@ -108,6 +108,24 @@ const dlt=(c,q,l)=>{q=+q;if(!q)return'';const p=(c/q-1)*100;return`<span class=d
 const mkc=(id,cfg)=>CH.push(new Chart(document.getElementById(id),{plugins:[VL],...cfg}));
 const TIP={callbacks:{label:c=>' '+fmt(c.raw)}};
 const pick=(k,x)=>{if(k=='dm')dm=x;if(k=='un')un=x;if(k=='rf')rf=rf==x?'':x;if(k=='df')df=df==x?'':x;if(k=='cm')cm=x;if(k=='su')su=x;if(k=='sut')su=su==x?'':x;if(k=='all')showAll=!showAll;dash()};
+const plain=m=>{m=String(m==null?'':m);const dt='<br><small>Technical detail: '+esc(m)+'</small>';
+ const R=[
+ [/Duplicate upload blocked/i,()=>esc(m)],
+ [/The file has no rows/i,()=>esc(m)],
+ [/statement timeout/i,()=>'The database ran out of time while working on this request. It stops anything that takes too long. The file is large or the database was busy. <b>Nothing was saved.</b> Please try again. If it keeps happening, tell your developer, who can raise the time limit.'+dt],
+ [/do not have permission/i,()=>'You do not have permission to upload data. Ask the admin to switch on "Can upload" for your login.'],
+ [/null value in column "([^"]+)"/i,x=>'A required value is empty in the column <b>'+esc(x[1])+'</b>. Fill that column in Excel for every row and upload again.'+dt],
+ [/invalid input syntax for type ([a-z ]+)/i,x=>'A cell contains text where a '+(/int|numer|double/i.test(x[1])?'number':'date')+' is expected. Check the number and date columns in Excel.'+dt],
+ [/out of range|numeric field overflow/i,()=>'A number in the file is too large to store. Check the quantity and rate columns.'+dt],
+ [/violates foreign key constraint/i,()=>'A depot in the file is not in your depot list. Add it under Admin controls, Depots &amp; regions, then upload again.'+dt],
+ [/duplicate key value violates unique constraint/i,()=>'The same item appears twice for the same depot and month, or this month already exists.'+dt],
+ [/could not find the function|function .* does not exist|relation .* does not exist|schema cache/i,()=>'The database is missing an update that this feature needs. Tell your developer to run the latest database file.'+dt],
+ [/permission denied/i,()=>'The database refused this action for your login (permission denied).'+dt],
+ [/jwt|refresh token|not authenticated/i,()=>'Your sign-in has expired. Please sign out and sign in again.'+dt],
+ [/failed to fetch|networkerror|load failed|fetch failed/i,()=>'The page could not reach the database. Check the internet connection and try again.'+dt],
+ [/payload too large|request entity too large|413/i,()=>'The file is too large to send in one go.'+dt]];
+ for(const[re,fn]of R){const x=re.exec(m);if(x)return fn(x)}
+ return 'Something unexpected went wrong. <b>Nothing was saved.</b>'+dt};
 let VIEW=0;const CACHE={};
 const bust=()=>{Object.keys(CACHE).forEach(k=>delete CACHE[k])};
 const ck=(n,a)=>n+JSON.stringify(a||{});
@@ -132,10 +150,10 @@ async function dash(fresh){
  const supl=sres&&!sres.error?sres.data:[],snm=await snames();
  if(su&&supl.length&&!supl.some(x=>x.short_name==su)){su='';return dash()}
  const t=eT.d||null;
- if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
- if(!t)eT.p.then(r=>{if(my!==VIEW)return;if(r.error){const el=$('#c3box');if(el)el.innerHTML='<div class=err>'+esc(r.error.message)+'</div>'}else dash()});
+ if(a.error)return v.innerHTML=`<div class=err>${plain(a.error.message)}</div>`;
+ if(!t)eT.p.then(r=>{if(my!==VIEW)return;if(r.error){const el=$('#c3box');if(el)el.innerHTML='<div class=err>'+plain(r.error.message)+'</div>'}else dash()});
  const pq=eP.d||null;
- if(!pq)eP.p.then(r=>{if(my!==VIEW)return;if(r.error){['pbox','pb5','pb6'].forEach(i=>{const el=$('#'+i);if(el)el.innerHTML='<div class=err>'+esc(r.error.message)+'</div>'})}else dash()});
+ if(!pq)eP.p.then(r=>{if(my!==VIEW)return;if(r.error){['pbox','pb5','pb6'].forEach(i=>{const el=$('#'+i);if(el)el.innerHTML='<div class=err>'+plain(r.error.message)+'</div>'})}else dash()});
  if(a.data.length&&!('sold_u' in a.data[0]))return v.innerHTML='<div class=err>The database update (schema_update2.sql) has not been run yet.</div>';
  const all=a.data,rg=[...new Set(all.map(r=>r.region))].sort();
  if(rf&&!rg.includes(rf))rf='';
@@ -206,8 +224,8 @@ async function lead(fresh){
  const supl=sres&&!sres.error?sres.data:[],snm=await snames();
  if(su&&supl.length&&!supl.some(x=>x.short_name==su)){su='';return lead()}
  const pp=eP.d||null;
- if(!pp)eP.p.then(r=>{if(my!==VIEW)return;if(r.error){const el=$('#pbox');if(el)el.innerHTML='<div class=err>'+esc(r.error.message)+'</div>'}else lead()});
- if(a.error)return v.innerHTML=`<div class=err>${esc(a.error.message)}</div>`;
+ if(!pp)eP.p.then(r=>{if(my!==VIEW)return;if(r.error){const el=$('#pbox');if(el)el.innerHTML='<div class=err>'+plain(r.error.message)+'</div>'}else lead()});
+ if(a.error)return v.innerHTML=`<div class=err>${plain(a.error.message)}</div>`;
  if(a.data.length&&!('sold_u' in a.data[0]))return v.innerHTML='<div class=err>The database update (schema_update2.sql) has not been run yet.</div>';
   const all=a.data,K=key(lm),isF=lm=='sold'||lm=='denied'||lm=='other',apm=FYm&&isF&&nmo>1,U=UL[un];
  const Rg={};all.forEach(r=>Rg[r.region]=(Rg[r.region]||0)+ +r[K]);
@@ -250,7 +268,14 @@ if(!f)return;const pv=$('#pv');pend=null;pv.innerHTML='<p class=mu>Reading file�
 try{
 const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true}),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:null});
 if(!rows.length)return pv.innerHTML='<div class=err>The first sheet is empty.</div>';
-const miss=H.filter(h=>!(h in rows[0]));if(miss.length)return pv.innerHTML=`<div class=err>Missing columns: ${esc(miss.join(','))}</div>`;
+const miss=H.filter(h=>!(h in rows[0]));if(miss.length)return pv.innerHTML=`<div class=err><b>Upload blocked: the file does not have these required columns:</b> ${esc(miss.join(', '))}.<br>Check the column headings in row 1 of the first sheet. They must match the sample file exactly, including spelling. Nothing was saved.</div>`;
+ const NUM=['GPCD','INDEX','PACK','GENCD','WSRATEPERUNIT','SOLDCS','SOLDUN','OTHISSCS','OTHISSUN','STOCKCS','STOCKUN','DENIEDCS','DENIEDUN','PRO_CASES','PRO_UNITS'],pr2={},PH=/^(-|–|—|na|n\/a|nil)$/i,hit=(col,msg,i,val)=>{const k=col+msg,o=pr2[k]=pr2[k]||{col,msg,n:0,row:i+2,val};o.n++};
+ let packBad=0,packRow=0;
+ rows.forEach((r,i)=>{NUM.forEach(c=>{const v=r[c];if(v==null||v===''||(typeof v=='string'&&PH.test(v.trim())))return;if(isNaN(+v))hit(c,'contains text instead of a number',i,v);else if(c!='WSRATEPERUNIT'&&Math.abs(+v)>2147483647)hit(c,'has a number that is too large',i,v)});
+ if(r.INDEX==null||r.INDEX==='')hit('INDEX','is blank (the product code is required)',i,'');
+ if(!(+r.PACK>0)){if(!packBad)packRow=i+2;packBad++}});
+ const pk=Object.values(pr2);
+ if(pk.length)return pv.innerHTML=`<div class=err><b>Upload blocked: some cells need fixing in Excel.</b><br>${pk.slice(0,8).map(o=>`Column <b>${esc(o.col)}</b> ${o.msg} in ${o.n.toLocaleString('en-IN')} row(s), first at Excel row ${o.row}${o.val!==''&&o.val!=null?` (value: "${esc(String(o.val).slice(0,30))}")`:''}.`).join('<br>')}${pk.length>8?'<br>…and more.':''}<br>Nothing was saved. Fix these cells in Excel and choose the file again.</div>`;
 const{data:md}=await sb.from('master_depot_regions').select('depot'),ok=new Set(md.map(x=>x.depot)),bad={},by={},seen=new Set();let dup=0;
 for(const r of rows){
 let dp=String(r.DEPOT||'').trim().toUpperCase().replace(/\s+/g,' ');if(dp=='PORT BLAIR')dp='SRI VIJAYA PURAM';
@@ -262,13 +287,13 @@ const o={mnth:m,depot:dp};for(const[k,h]of Object.entries(C))o[k]=TX.includes(k)
 const bk=Object.keys(bad);
 if(bk.length||dup)return pv.innerHTML=`<div class=err><b>Upload blocked.</b><br>${bk.map(k=>`${esc(k)}: ${bad[k]} rows`).join('<br>')}${bk.length?'<br>Unknown depots must be added to the depot-region mapping first.':''}${dup?`<br>${dup} duplicate rows (same month, item and depot).`:''}</div>`;
 const mk=Object.keys(by),ex=await sb.from('upload_batches').select('mnth,filename,uploaded_by,uploaded_at').in('mnth',mk);
-if(ex.error)return pv.innerHTML=`<div class=err>${esc(ex.error.message)}</div>`;
+if(ex.error)return pv.innerHTML=`<div class=err>${plain(ex.error.message)}</div>`;
 if(ex.data.length)return pv.innerHTML=`<div class=err><b>Upload blocked: duplicate month.</b><br>${ex.data.map(x=>`${mon(x.mnth)} was already uploaded as ${esc(x.filename)} by ${esc(x.uploaded_by)} on ${new Date(x.uploaded_at).toLocaleDateString('en-IN')}.`).join('<br>')}<br>Nothing was changed. An admin can delete that month in Admin controls &gt; Upload history and then upload it again.</div>`;
 pend={by,name:f.name};const ms=Object.keys(by).sort();
-pv.innerHTML=`<div class=ok>File is valid: ${rows.length.toLocaleString('en-IN')} rows across ${ms.length} month(s): ${ms.map(m=>mon(m)+' ('+by[m].length.toLocaleString('en-IN')+')').join(', ')}</div><button class=btn id=ub onclick="up()">Upload these months</button><div id=st class=mu></div>`
-}catch(e){pv.innerHTML=`<div class=err>Could not read the file: ${esc(e.message)}</div>`}}
+pv.innerHTML=`<div class=ok>File is valid: ${rows.length.toLocaleString('en-IN')} rows across ${ms.length} month(s): ${ms.map(m=>mon(m)+' ('+by[m].length.toLocaleString('en-IN')+')').join(', ')}</div>${packBad?`<div class=err style="background:#fff6e0;color:#8a5a00"><b>Note:</b> PACK is blank or zero in ${packBad.toLocaleString('en-IN')} row(s) (first at Excel row ${packRow}). The upload will work, but the Cases figures for those rows will be empty.</div>`:''}<button class=btn id=ub onclick="up()">Upload these months</button><div id=st class=mu></div>`
+}catch(e){pv.innerHTML=`<div class=err><b>This file could not be read.</b> It may not be a real .xlsx file, may be damaged, or may be password-protected.<br><small>Technical detail: ${esc(e.message)}</small></div>`}}
 async function up(){
-const st=$('#st'),f=m=>st.innerHTML=m,bad=e=>{f(`<div class=err>Upload stopped. Nothing was saved for this month: ${esc(e.message)}</div>`);$('#ub').disabled=false};$('#ub').disabled=true;
+const st=$('#st'),f=m=>st.innerHTML=m,bad=e=>{f(`<div class=err><b>Upload stopped. Nothing was saved for this month.</b><br>${plain(e.message)}</div>`);$('#ub').disabled=false};$('#ub').disabled=true;
 for(const m of Object.keys(pend.by).sort()){
 const rs=pend.by[m];f(`Uploading ${mon(m)} (${rs.length.toLocaleString('en-IN')} rows)…`);
 const r=await sb.rpc('upload_month',{p_mnth:m,p_filename:pend.name,p_rows:rs});if(r.error)return bad(r.error)}
