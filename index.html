@@ -271,7 +271,7 @@ if(!rows.length)return pv.innerHTML='<div class=err>The first sheet is empty.</d
 const miss=H.filter(h=>!(h in rows[0]));if(miss.length)return pv.innerHTML=`<div class=err><b>Upload blocked: the file does not have these required columns:</b> ${esc(miss.join(', '))}.<br>Check the column headings in row 1 of the first sheet. They must match the sample file exactly, including spelling. Nothing was saved.</div>`;
  const NUM=['GPCD','INDEX','PACK','GENCD','WSRATEPERUNIT','SOLDCS','SOLDUN','OTHISSCS','OTHISSUN','STOCKCS','STOCKUN','DENIEDCS','DENIEDUN','PRO_CASES','PRO_UNITS'],pr2={},PH=/^(-|–|—|na|n\/a|nil)$/i,hit=(col,msg,i,val)=>{const k=col+msg,o=pr2[k]=pr2[k]||{col,msg,n:0,row:i+2,val};o.n++};
  let packBad=0,packRow=0;
- rows.forEach((r,i)=>{NUM.forEach(c=>{const v=r[c];if(v==null||v===''||(typeof v=='string'&&PH.test(v.trim())))return;if(isNaN(+v))hit(c,'contains text instead of a number',i,v);else if(c!='WSRATEPERUNIT'&&Math.abs(+v)>2147483647)hit(c,'has a number that is too large',i,v)});
+ rows.forEach((r,i)=>{NUM.forEach(c=>{const v=r[c];if(v==null||v===''||(typeof v=='string'&&PH.test(v.trim())))return;if(isNaN(+v))hit(c,'contains text instead of a number',i,v);else if(!['WSRATEPERUNIT','GENCD','GPCD','INDEX'].includes(c)&&Math.abs(+v)>2147483647)hit(c,'has a number that is too large',i,v)});
  if(r.INDEX==null||r.INDEX==='')hit('INDEX','is blank (the product code is required)',i,'');
  if(!(+r.PACK>0)){if(!packBad)packRow=i+2;packBad++}});
  const pk=Object.values(pr2);
