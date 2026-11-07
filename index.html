@@ -293,10 +293,30 @@ pend={by,name:f.name};const ms=Object.keys(by).sort();
 pv.innerHTML=`<div class=ok>File is valid: ${rows.length.toLocaleString('en-IN')} rows across ${ms.length} month(s): ${ms.map(m=>mon(m)+' ('+by[m].length.toLocaleString('en-IN')+')').join(', ')}</div>${packBad?`<div class=err style="background:#fff6e0;color:#8a5a00"><b>Note:</b> PACK is blank or zero in ${packBad.toLocaleString('en-IN')} row(s) (first at Excel row ${packRow}). The upload will work, but the Cases figures for those rows will be empty.</div>`:''}<button class=btn id=ub onclick="up()">Upload these months</button><div id=st class=mu></div>`
 }catch(e){pv.innerHTML=`<div class=err><b>This file could not be read.</b> It may not be a real .xlsx file, may be damaged, or may be password-protected.<br><small>Technical detail: ${esc(e.message)}</small></div>`}}
 async function up(){
-const st=$('#st'),f=m=>st.innerHTML=m,bad=e=>{f(`<div class=err><b>Upload stopped. Nothing was saved for this month.</b><br>${plain(e.message)}</div>`);$('#ub').disabled=false};$('#ub').disabled=true;
+const st=$('#st'),f=m=>st.innerHTML=m,sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const NET=/failed to fetch|networkerror|load failed|fetch failed/i;
+const bad=e=>{f(`<div class=err><b>Upload stopped. Nothing was saved for this month.</b><br>${plain(e.message)}</div>`);$('#ub').disabled=false};
+$('#ub').disabled=true;
+const call=async(name,args,tries)=>{let r;for(let a=1;a<=tries;a++){try{r=await sb.rpc(name,args)}catch(e){r={error:e}}
+if(!r.error)return r;if(!NET.test(String((r.error&&r.error.message)||r.error)))return r;
+if(a<tries){f(`Connection dropped, retrying (${a+1} of ${tries})…`);await sleep(2000*a)}}return r};
+const CH=3000;
 for(const m of Object.keys(pend.by).sort()){
-const rs=pend.by[m];f(`Uploading ${mon(m)} (${rs.length.toLocaleString('en-IN')} rows)…`);
-const r=await sb.rpc('upload_month',{p_mnth:m,p_filename:pend.name,p_rows:rs});if(r.error)return bad(r.error)}
+const rs=pend.by[m];let bid=null;
+const fail=async e=>{let ok=true;if(bid){const a=await call('upload_month_abort',{p_batch:bid},4);if(a.error)ok=false}
+if(ok)return bad(e);
+f(`<div class=err><b>Upload stopped.</b><br>${plain(e.message)}<br>The clean-up also failed, so part of ${mon(m)} may be saved. An admin should delete ${mon(m)} in Admin controls &gt; Upload history, then upload it again.</div>`);$('#ub').disabled=false};
+f(`Starting ${mon(m)} (${rs.length.toLocaleString('en-IN')} rows)…`);
+let r=await call('upload_month_start',{p_mnth:m,p_filename:pend.name,p_total:rs.length},1);
+if(r.error)return bad(r.error);
+bid=r.data;
+for(let i=0;i<rs.length;i+=CH){
+f(`Uploading ${mon(m)}: ${Math.min(i+CH,rs.length).toLocaleString('en-IN')} of ${rs.length.toLocaleString('en-IN')} rows…`);
+r=await call('upload_month_rows',{p_batch:bid,p_rows:rs.slice(i,i+CH),p_before:i},4);
+if(r.error)return fail(r.error)}
+f(`Finishing ${mon(m)}…`);
+r=await call('upload_month_finish',{p_batch:bid},3);
+if(r.error)return fail(r.error)}
 bust();f('<div class=ok>Upload complete. The dashboard now shows the new data.</div>');pend=null}
 async function admn(){
 const v=$('#v');v.innerHTML='<p class=mu>Loading…</p>';
